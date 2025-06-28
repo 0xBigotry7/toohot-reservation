@@ -1,0 +1,85 @@
+headersOrigin = "inline"
+redirectsOrigin = "inline"
+functionsDirectory = "/Users/jingzhougaryxue/CascadeProjects/toohot/reservation-system/admin-simple/netlify/functions"
+functionsDirectoryOrigin = "config"
+
+[functions]
+
+[functions."*"]
+
+[[plugins]]
+origin = "default"
+package = "@netlify/plugin-nextjs"
+
+[plugins.inputs]
+
+[build]
+publish = "/Users/jingzhougaryxue/CascadeProjects/toohot/reservation-system/admin-simple/.next"
+publishOrigin = "config"
+commandOrigin = "ui"
+base = "/Users/jingzhougaryxue/CascadeProjects/toohot/reservation-system/admin-simple"
+command = "npm run build"
+functions = "/Users/jingzhougaryxue/CascadeProjects/toohot/reservation-system/admin-simple/netlify/functions"
+
+[build.environment]
+SUPABASE_URL = "https://your-project.supabase.co"
+SUPABASE_SERVICE_ROLE_KEY = "your_service_role_key"
+RESEND_API_KEY = "your_resend_api_key"
+RESTAURANT_EMAIL = "team@toohot.kitchen"
+RESTAURANT_PHONE = "(617) 945-1206"
+
+[build.processing]
+
+[build.processing.css]
+
+[build.processing.html]
+
+[build.processing.images]
+
+[build.processing.js]
+
+[build.services]
+
+[[headers]]
+for = "/api/*"
+
+[headers.values]
+Access-Control-Allow-Origin = "*"
+Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, OPTIONS"
+Access-Control-Allow-Headers = "Content-Type, Authorization"
+
+[[headers]]
+for = "/_next/static/*"
+
+[headers.values]
+Cache-Control = "public, max-age=31536000, immutable"
+
+[[redirects]]
+from = "/_next/image"
+to = "/.netlify/images?url=:url&w=:width&q=:quality"
+status = 200.0
+force = false
+
+[redirects.query]
+url = ":url"
+w = ":width"
+q = ":quality"
+
+[redirects.conditions]
+
+[redirects.headers]
+
+[[redirects]]
+from = "/_ipx/*"
+to = "/.netlify/images?url=:url&w=:width&q=:quality"
+status = 200.0
+force = false
+
+[redirects.query]
+url = ":url"
+w = ":width"
+q = ":quality"
+
+[redirects.conditions]
+
+[redirects.headers]
