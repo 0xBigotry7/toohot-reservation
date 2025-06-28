@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from 'react'
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday, addDays, getDay, startOfWeek } from 'date-fns'
-import { supabase } from '../../../lib/supabase'
+import { supabase } from '../lib/supabase'
 import { nanoid } from 'nanoid'
-import { useToast } from '../../../hooks/use-toast'
+import { useToast } from '../hooks/use-toast'
 
 interface Reservation {
   id: string
