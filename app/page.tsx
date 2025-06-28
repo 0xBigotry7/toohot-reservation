@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { format } from 'date-fns'
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday, addDays } from 'date-fns'
+import { supabase } from '../../../lib/supabase'
 
 interface Reservation {
   id: string
@@ -25,6 +26,9 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [authenticated, setAuthenticated] = useState(false)
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [days, setDays] = useState<Date[]>([]);
+  const [calendarReservations, setCalendarReservations] = useState<{ [date: string]: Reservation[] }>({});
 
   // Improved authentication check
   useEffect(() => {
@@ -59,16 +63,44 @@ export default function AdminDashboard() {
   useEffect(() => {
     if (!authenticated) return
     const fetchReservations = async () => {
+      setLoading(true);
+      setError(null);
       try {
-        // Fetch reservations here
-        setLoading(false)
-      } catch (err) {
-        setError('Failed to load reservations')
-        setLoading(false)
+        const now = new Date();
+        const end = addDays(now, 29);
+        const { data, error } = await supabase()
+          .from('reservations')
+          .select('*')
+          .gte('reservation_date', format(now, 'yyyy-MM-dd'))
+          .lte('reservation_date', format(end, 'yyyy-MM-dd'));
+        if (error) throw error;
+        setReservations(data || []);
+        // Group by date
+        const grouped: { [date: string]: Reservation[] } = {};
+        (data || []).forEach((r: Reservation) => {
+          const key = r.reservation_date;
+          if (!grouped[key]) grouped[key] = [];
+          grouped[key].push(r);
+        });
+        setCalendarReservations(grouped);
+      } catch (err: any) {
+        setError(err.message || 'Failed to load reservations');
+      } finally {
+        setLoading(false);
       }
     }
     fetchReservations()
   }, [authenticated])
+
+  useEffect(() => {
+    // Generate next 30 days from today
+    const now = new Date();
+    const daysArr = eachDayOfInterval({
+      start: now,
+      end: addDays(now, 29),
+    });
+    setDays(daysArr);
+  }, []);
 
   const logout = () => {
     localStorage.removeItem('admin-authenticated')
@@ -90,9 +122,9 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-sand-beige">
-      {/* Branded Header */}
-      <header className="liquid-glass shadow py-6 px-4 flex items-center justify-between">
+    <div className="min-h-screen bg-gradient-to-br from-sand-beige to-white flex flex-col">
+      {/* Sidebar or Top Nav */}
+      <header className="liquid-glass shadow py-6 px-8 flex items-center justify-between">
         <div>
           <h1 className="restaurant-title text-copper flex items-center gap-2">
             <span role="img" aria-label="fire">🔥</span> TooHot Admin
@@ -106,135 +138,90 @@ export default function AdminDashboard() {
           Logout
         </button>
       </header>
-
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto py-10 px-4">
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
-          <div className="liquid-glass p-6 rounded-2xl shadow hover-lift">
+      <main className="flex-1 max-w-7xl mx-auto w-full py-10 px-4">
+        {/* Calendar View */}
+        <section className="mb-12">
+          <h2 className="elegant-subtitle text-copper mb-6">Next 30 Days Reservations Overview</h2>
+          <div className="bg-white/60 rounded-2xl shadow p-6 overflow-x-auto wabi-sabi-border">
+            <div className="grid grid-cols-7 gap-2">
+              {days.map((day) => {
+                const key = format(day, 'yyyy-MM-dd');
+                const reservationsForDay = calendarReservations[key] || [];
+                return (
+                  <button
+                    key={key}
+                    className={`flex flex-col items-center justify-center p-3 rounded-xl border transition-all
+                      ${isToday(day) ? 'border-copper bg-sand-beige/60 shadow' : 'border-transparent bg-white/40'}
+                      ${selectedDate && isSameDay(day, selectedDate) ? 'ring-2 ring-copper' : ''}
+                      hover:bg-sand-beige/40`}
+                    onClick={() => setSelectedDate(day)}
+                  >
+                    <span className="font-playfair text-lg">{format(day, 'd')}</span>
+                    <span className="text-xs text-copper mt-1">{reservationsForDay.length} reservations</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+        {/* Daily Reservations List */}
+        {selectedDate && (
+          <section className="mb-12">
+            <h3 className="elegant-subtitle text-copper mb-4">
+              Reservations for {format(selectedDate, 'MMMM d, yyyy')}
+            </h3>
+            <div className="liquid-glass rounded-2xl shadow p-6">
+              {loading ? (
+                <p className="elegant-body text-charcoal/60">Loading...</p>
+              ) : error ? (
+                <p className="elegant-body text-red-600">{error}</p>
+              ) : (calendarReservations[format(selectedDate, 'yyyy-MM-dd')] || []).length === 0 ? (
+                <p className="elegant-body text-charcoal/60">No reservations for this day.</p>
+              ) : (
+                <ul className="space-y-4">
+                  {(calendarReservations[format(selectedDate, 'yyyy-MM-dd')] || []).map((reservation) => (
+                    <li key={reservation.id} className="flex flex-col md:flex-row md:items-center md:justify-between p-4 rounded-xl bg-sand-beige/40 hover:bg-sand-beige/60 transition-all">
+                      <div>
+                        <div className="font-playfair text-lg text-ink-black">{reservation.customer_name}</div>
+                        <div className="text-charcoal text-sm">{reservation.customer_email}</div>
+                        <div className="text-charcoal text-sm">Party of {reservation.party_size}</div>
+                      </div>
+                      <div className="mt-2 md:mt-0 text-copper font-mono">{reservation.reservation_time}</div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </section>
+        )}
+        {/* Stats Cards and System Status (minimalist, wabi-sabi style) */}
+        <section className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
+          <div className="liquid-glass p-6 rounded-2xl shadow hover-lift wabi-sabi-border">
             <h3 className="elegant-subtitle text-copper mb-2">Today&apos;s Reservations</h3>
             <p className="text-4xl font-bold text-ink-black">0</p>
           </div>
-          <div className="liquid-glass p-6 rounded-2xl shadow hover-lift">
+          <div className="liquid-glass p-6 rounded-2xl shadow hover-lift wabi-sabi-border">
             <h3 className="elegant-subtitle text-copper mb-2">This Week</h3>
             <p className="text-4xl font-bold text-ink-black">0</p>
           </div>
-          <div className="liquid-glass p-6 rounded-2xl shadow hover-lift">
+          <div className="liquid-glass p-6 rounded-2xl shadow hover-lift wabi-sabi-border">
             <h3 className="elegant-subtitle text-copper mb-2">Total Revenue</h3>
             <p className="text-4xl font-bold text-ink-black">$0</p>
           </div>
-          <div className="liquid-glass p-6 rounded-2xl shadow hover-lift">
+          <div className="liquid-glass p-6 rounded-2xl shadow hover-lift wabi-sabi-border">
             <h3 className="elegant-subtitle text-copper mb-2">Avg Party Size</h3>
             <p className="text-4xl font-bold text-ink-black">0</p>
           </div>
-        </div>
-
-        {/* Reservations Table */}
-        <div className="liquid-glass shadow rounded-2xl mb-10">
-          <div className="px-6 py-4 border-b border-copper/20">
-            <h2 className="elegant-subtitle text-copper">Recent Reservations</h2>
-          </div>
-          
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-copper/10">
-              <thead className="bg-sand-beige">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-copper uppercase tracking-wider">
-                    Customer
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-copper uppercase tracking-wider">
-                    Date & Time
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-copper uppercase tracking-wider">
-                    Party Size
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-copper uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-copper uppercase tracking-wider">
-                    Confirmation
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-copper/10">
-                {reservations.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="px-6 py-4 text-center text-charcoal/60">
-                      No reservations found. Make a test reservation to see data here!
-                    </td>
-                  </tr>
-                ) : (
-                  reservations.map((reservation) => (
-                    <tr key={reservation.id} className="hover:bg-sand-beige/40 transition-colors">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div>
-                          <div className="text-sm font-medium text-ink-black">
-                            {reservation.customer_name}
-                          </div>
-                          <div className="text-sm text-charcoal">
-                            {reservation.customer_email}
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-ink-black">
-                          {format(new Date(reservation.reservation_date), 'MMM dd, yyyy')}
-                        </div>
-                        <div className="text-sm text-charcoal">
-                          {reservation.reservation_time}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-ink-black">
-                        {reservation.party_size} guests
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                          reservation.status === 'confirmed' 
-                            ? 'bg-green-100 text-green-800'
-                            : reservation.status === 'cancelled'
-                            ? 'bg-red-100 text-red-800'
-                            : 'bg-yellow-100 text-yellow-800'
-                        }`}>
-                          {reservation.status}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-ink-black">
-                        {reservation.confirmation_code}
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="liquid-glass p-6 rounded-2xl shadow hover-lift">
-            <h3 className="elegant-subtitle text-copper mb-4">Quick Actions</h3>
-            <div className="space-y-3">
-              <button className="w-full bg-copper text-white px-4 py-2 rounded hover:bg-copper/90 transition-colors font-semibold">
-                Add Manual Reservation
-              </button>
-              <button className="w-full bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition-colors font-semibold">
-                Export Today&apos;s List
-              </button>
-              <button className="w-full bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors font-semibold">
-                Send Reminder Emails
-              </button>
-            </div>
-          </div>
-
-          <div className="liquid-glass p-6 rounded-2xl shadow hover-lift md:col-span-2">
-            <h3 className="elegant-subtitle text-copper mb-4">System Status</h3>
-            <ul className="space-y-2 text-ink-black">
-              <li>Database: <span className="font-bold text-green-600">✓ Connected</span></li>
-              <li>Email Service: <span className="font-bold text-green-600">✓ Active</span></li>
-              <li>API Status: <span className="font-bold text-green-600">✓ Healthy</span></li>
-            </ul>
-          </div>
-        </div>
+        </section>
+        {/* System Status */}
+        <section className="liquid-glass p-6 rounded-2xl shadow hover-lift wabi-sabi-border md:col-span-2 mb-10">
+          <h3 className="elegant-subtitle text-copper mb-4">System Status</h3>
+          <ul className="space-y-2 text-ink-black">
+            <li>Database: <span className="font-bold text-green-600">✓ Connected</span></li>
+            <li>Email Service: <span className="font-bold text-green-600">✓ Active</span></li>
+            <li>API Status: <span className="font-bold text-green-600">✓ Healthy</span></li>
+          </ul>
+        </section>
       </main>
     </div>
   )
