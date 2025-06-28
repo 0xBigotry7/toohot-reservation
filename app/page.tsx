@@ -17,39 +17,57 @@ interface Reservation {
   created_at: string
 }
 
+// Use environment variable for admin password (for demo only; real apps should use server-side auth)
+const ADMIN_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD;
+
 export default function AdminDashboard() {
   const [reservations, setReservations] = useState<Reservation[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [authenticated, setAuthenticated] = useState(false)
 
-  // Simple authentication check
+  // Improved authentication check
   useEffect(() => {
     const isAuthenticated = localStorage.getItem('admin-authenticated')
-    if (!isAuthenticated) {
-      const password = prompt('Enter admin password:')
-      if (password === process.env.ADMIN_PASSWORD || password === 'admin123') {
+    if (isAuthenticated === 'true') {
+      setAuthenticated(true)
+      setLoading(false)
+      return
+    }
+    let attempts = 0
+    function promptPassword() {
+      const password = window.prompt('Enter admin password:')
+      if (password === ADMIN_PASSWORD) {
         localStorage.setItem('admin-authenticated', 'true')
+        setAuthenticated(true)
+        setLoading(false)
       } else {
-        alert('Invalid password')
-        return
+        attempts++
+        if (attempts >= 3) {
+          alert('Too many failed attempts.')
+          setLoading(true)
+        } else {
+          alert('Invalid password')
+          promptPassword()
+        }
       }
     }
+    promptPassword()
   }, [])
 
   useEffect(() => {
+    if (!authenticated) return
     const fetchReservations = async () => {
       try {
-        // For now, we&apos;ll fetch directly from Supabase
-        // In production, you&apos;d use your API endpoints
+        // Fetch reservations here
         setLoading(false)
       } catch (err) {
         setError('Failed to load reservations')
         setLoading(false)
       }
     }
-
     fetchReservations()
-  }, [])
+  }, [authenticated])
 
   const logout = () => {
     localStorage.removeItem('admin-authenticated')
@@ -58,113 +76,114 @@ export default function AdminDashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-sand-beige flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading dashboard...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-copper mx-auto"></div>
+          <p className="mt-4 text-copper elegant-subtitle">Loading dashboard...</p>
         </div>
       </div>
     )
   }
+  if (!authenticated) {
+    return null
+  }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">🔥 TooHot Admin</h1>
-              <p className="text-gray-600">Reservation Management Dashboard</p>
-            </div>
-            <button
-              onClick={logout}
-              className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
-            >
-              Logout
-            </button>
-          </div>
+    <div className="min-h-screen bg-sand-beige">
+      {/* Branded Header */}
+      <header className="liquid-glass shadow py-6 px-4 flex items-center justify-between">
+        <div>
+          <h1 className="restaurant-title text-copper flex items-center gap-2">
+            <span role="img" aria-label="fire">🔥</span> TooHot Admin
+          </h1>
+          <p className="elegant-subtitle text-charcoal mt-1">Reservation Management Dashboard</p>
         </div>
+        <button
+          onClick={logout}
+          className="bg-copper text-white px-6 py-2 rounded-lg hover:bg-copper/90 transition-colors font-semibold shadow hover-lift"
+        >
+          Logout
+        </button>
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+      <main className="max-w-7xl mx-auto py-10 px-4">
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white p-6 rounded-lg shadow">
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Today&apos;s Reservations</h3>
-            <p className="text-3xl font-bold text-blue-600">0</p>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
+          <div className="liquid-glass p-6 rounded-2xl shadow hover-lift">
+            <h3 className="elegant-subtitle text-copper mb-2">Today's Reservations</h3>
+            <p className="text-4xl font-bold text-ink-black">0</p>
           </div>
-          <div className="bg-white p-6 rounded-lg shadow">
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">This Week</h3>
-            <p className="text-3xl font-bold text-green-600">0</p>
+          <div className="liquid-glass p-6 rounded-2xl shadow hover-lift">
+            <h3 className="elegant-subtitle text-copper mb-2">This Week</h3>
+            <p className="text-4xl font-bold text-ink-black">0</p>
           </div>
-          <div className="bg-white p-6 rounded-lg shadow">
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Total Revenue</h3>
-            <p className="text-3xl font-bold text-purple-600">$0</p>
+          <div className="liquid-glass p-6 rounded-2xl shadow hover-lift">
+            <h3 className="elegant-subtitle text-copper mb-2">Total Revenue</h3>
+            <p className="text-4xl font-bold text-ink-black">$0</p>
           </div>
-          <div className="bg-white p-6 rounded-lg shadow">
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Avg Party Size</h3>
-            <p className="text-3xl font-bold text-orange-600">0</p>
+          <div className="liquid-glass p-6 rounded-2xl shadow hover-lift">
+            <h3 className="elegant-subtitle text-copper mb-2">Avg Party Size</h3>
+            <p className="text-4xl font-bold text-ink-black">0</p>
           </div>
         </div>
 
         {/* Reservations Table */}
-        <div className="bg-white shadow rounded-lg">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-xl font-semibold text-gray-900">Recent Reservations</h2>
+        <div className="liquid-glass shadow rounded-2xl mb-10">
+          <div className="px-6 py-4 border-b border-copper/20">
+            <h2 className="elegant-subtitle text-copper">Recent Reservations</h2>
           </div>
           
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+            <table className="min-w-full divide-y divide-copper/10">
+              <thead className="bg-sand-beige">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-copper uppercase tracking-wider">
                     Customer
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-copper uppercase tracking-wider">
                     Date & Time
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-copper uppercase tracking-wider">
                     Party Size
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-copper uppercase tracking-wider">
                     Status
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-copper uppercase tracking-wider">
                     Confirmation
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="bg-white divide-y divide-copper/10">
                 {reservations.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-6 py-4 text-center text-gray-500">
+                    <td colSpan={5} className="px-6 py-4 text-center text-charcoal/60">
                       No reservations found. Make a test reservation to see data here!
                     </td>
                   </tr>
                 ) : (
                   reservations.map((reservation) => (
-                    <tr key={reservation.id}>
+                    <tr key={reservation.id} className="hover:bg-sand-beige/40 transition-colors">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div>
-                          <div className="text-sm font-medium text-gray-900">
+                          <div className="text-sm font-medium text-ink-black">
                             {reservation.customer_name}
                           </div>
-                          <div className="text-sm text-gray-500">
+                          <div className="text-sm text-charcoal">
                             {reservation.customer_email}
                           </div>
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">
+                        <div className="text-sm text-ink-black">
                           {format(new Date(reservation.reservation_date), 'MMM dd, yyyy')}
                         </div>
-                        <div className="text-sm text-gray-500">
+                        <div className="text-sm text-charcoal">
                           {reservation.reservation_time}
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-ink-black">
                         {reservation.party_size} guests
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -178,7 +197,7 @@ export default function AdminDashboard() {
                           {reservation.status}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-ink-black">
                         {reservation.confirmation_code}
                       </td>
                     </tr>
@@ -190,52 +209,29 @@ export default function AdminDashboard() {
         </div>
 
         {/* Quick Actions */}
-        <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-white p-6 rounded-lg shadow">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="liquid-glass p-6 rounded-2xl shadow hover-lift">
+            <h3 className="elegant-subtitle text-copper mb-4">Quick Actions</h3>
             <div className="space-y-3">
-              <button className="w-full bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors">
+              <button className="w-full bg-copper text-white px-4 py-2 rounded hover:bg-copper/90 transition-colors font-semibold">
                 Add Manual Reservation
               </button>
-              <button className="w-full bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition-colors">
-                Export Today&apos;s List
+              <button className="w-full bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition-colors font-semibold">
+                Export Today's List
               </button>
-              <button className="w-full bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700 transition-colors">
+              <button className="w-full bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors font-semibold">
                 Send Reminder Emails
               </button>
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-lg shadow">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">System Status</h3>
-            <div className="space-y-3">
-              <div className="flex justify-between">
-                <span className="text-gray-600">Database:</span>
-                <span className="text-green-600 font-semibold">✓ Connected</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Email Service:</span>
-                <span className="text-green-600 font-semibold">✓ Active</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">API Status:</span>
-                <span className="text-green-600 font-semibold">✓ Healthy</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white p-6 rounded-lg shadow">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Today&apos;s Schedule</h3>
-            <div className="space-y-3">
-              <div className="text-center p-4 bg-gray-50 rounded">
-                <p className="text-lg font-semibold text-gray-900">5:00 PM - 7:00 PM</p>
-                <p className="text-sm text-gray-600">0 / 15 seats booked</p>
-              </div>
-              <div className="text-center p-4 bg-gray-50 rounded">
-                <p className="text-lg font-semibold text-gray-900">7:00 PM - 9:00 PM</p>
-                <p className="text-sm text-gray-600">0 / 15 seats booked</p>
-              </div>
-            </div>
+          <div className="liquid-glass p-6 rounded-2xl shadow hover-lift md:col-span-2">
+            <h3 className="elegant-subtitle text-copper mb-4">System Status</h3>
+            <ul className="space-y-2 text-ink-black">
+              <li>Database: <span className="font-bold text-green-600">✓ Connected</span></li>
+              <li>Email Service: <span className="font-bold text-green-600">✓ Active</span></li>
+              <li>API Status: <span className="font-bold text-green-600">✓ Healthy</span></li>
+            </ul>
           </div>
         </div>
       </main>
