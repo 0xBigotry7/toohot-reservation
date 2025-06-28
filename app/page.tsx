@@ -37,6 +37,7 @@ export default function AdminDashboard() {
     let attempts = 0
     function promptPassword() {
       const password = window.prompt('Enter admin password:')
+      const ADMIN_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD;
       if (password === ADMIN_PASSWORD) {
         localStorage.setItem('admin-authenticated', 'true')
         setAuthenticated(true)
