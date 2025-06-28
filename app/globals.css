@@ -1,0 +1,64 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,500;1,600;1,700;1,800;1,900&family=Crimson+Text:ital,wght@0,400;0,600;0,700;1,400;1,600;1,700&family=LXGW+WenKai+TC:wght@300;400;700&family=Ma+Shan+Zheng&family=Zhi+Mang+Xing&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Brand and utility classes from main site for consistent look */
+:root {
+  --foreground-rgb: 74, 72, 64;
+  --background-start-rgb: 221, 211, 196;
+  --background-end-rgb: 255, 255, 255;
+  --font-crimson: 'Crimson Text', serif;
+  --font-playfair: 'Playfair Display', serif;
+  --font-chinese-elegant: 'LXGW WenKai TC', 'Ma Shan Zheng', serif;
+  --font-chinese-calligraphy: 'Zhi Mang Xing', 'Ma Shan Zheng', serif;
+}
+
+@layer base {
+  body {
+    @apply bg-sand-beige text-ink-black font-crimson;
+    font-feature-settings: "rlig" 1, "calt" 1;
+    overflow-x: hidden;
+    scroll-behavior: smooth;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-playfair;
+    line-height: 1.2;
+    font-weight: 600;
+  }
+  p {
+    line-height: 1.6;
+  }
+}
+
+@layer components {
+  .restaurant-title {
+    @apply font-playfair text-4xl md:text-6xl font-bold tracking-wide;
+    letter-spacing: 0.02em;
+  }
+  .elegant-subtitle {
+    @apply font-playfair text-xl md:text-2xl font-medium italic;
+    letter-spacing: 0.01em;
+  }
+  .elegant-body {
+    @apply font-crimson text-base leading-relaxed;
+  }
+  .liquid-glass {
+    backdrop-filter: blur(20px) saturate(180%);
+    background: rgba(221, 211, 196, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1),
+      inset 0 1px 0 rgba(255, 255, 255, 0.4),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.1);
+  }
+  .hover-lift {
+    transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    transform: translateZ(0);
+    backface-visibility: hidden;
+  }
+  .hover-lift:hover {
+    transform: translateY(-8px) scale(1.02) translateZ(0);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+  }
+} 
