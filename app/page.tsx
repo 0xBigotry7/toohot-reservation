@@ -112,7 +112,7 @@ export default function AdminDashboard() {
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
           <div className="liquid-glass p-6 rounded-2xl shadow hover-lift">
-            <h3 className="elegant-subtitle text-copper mb-2">Today's Reservations</h3>
+            <h3 className="elegant-subtitle text-copper mb-2">Today&apos;s Reservations</h3>
             <p className="text-4xl font-bold text-ink-black">0</p>
           </div>
           <div className="liquid-glass p-6 rounded-2xl shadow hover-lift">
@@ -218,7 +218,7 @@ export default function AdminDashboard() {
                 Add Manual Reservation
               </button>
               <button className="w-full bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition-colors font-semibold">
-                Export Today's List
+                Export Today&apos;s List
               </button>
               <button className="w-full bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors font-semibold">
                 Send Reminder Emails
