@@ -19,7 +19,14 @@
     "autoprefixer": "^10.0.1",
     "postcss": "^8",
     "@headlessui/react": "^1.7.17",
-    "@heroicons/react": "^2.0.18"
+    "@heroicons/react": "^2.0.18",
+    "@radix-ui/react-toast": "^1.1.5",
+    "class-variance-authority": "^0.7.0",
+    "clsx": "^2.0.0",
+    "lucide-react": "^0.294.0",
+    "nanoid": "^5.0.4",
+    "resend": "^2.1.0",
+    "tailwind-merge": "^2.2.0"
   },
   "devDependencies": {
     "typescript": "^5",

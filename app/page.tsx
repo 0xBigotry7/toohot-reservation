@@ -256,7 +256,7 @@ export default function AdminDashboard() {
                                 toast({
                                   title: 'Reservation Confirmed',
                                   description: 'The customer has been notified by email.',
-                                  variant: 'success',
+                                  variant: 'default',
                                 });
                               }
                               // Update UI with actual updated row
