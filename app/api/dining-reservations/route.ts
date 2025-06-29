@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
           reservation_time,
           party_size,
           special_requests,
-          reservation_type: 'Normal Dining'
+          reservation_type: 'dining'
         })
       } catch (emailError) {
         console.error('Failed to send confirmation email:', emailError)
@@ -202,7 +202,7 @@ export async function PUT(request: NextRequest) {
             reservation_time,
             party_size,
             special_requests,
-            reservation_type: 'Normal Dining'
+            reservation_type: 'dining'
           })
         } else if (status === 'cancelled') {
           // Send cancellation email (implement if needed)
