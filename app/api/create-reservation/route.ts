@@ -24,9 +24,28 @@ export async function POST(request: NextRequest) {
     const reservationType = reservationData.type || 'omakase';
     const tableName = reservationType === 'omakase' ? 'omakase_reservations' : 'dining_reservations';
 
-    // Auto-confirmation settings - can be configured via environment variables
-    const autoConfirmOmakase = process.env.AUTO_CONFIRM_OMAKASE === 'true';
-    const autoConfirmDining = process.env.AUTO_CONFIRM_DINING === 'true';
+    // Auto-confirmation settings - read from database first, then environment variables
+    let autoConfirmOmakase = process.env.AUTO_CONFIRM_OMAKASE === 'true';
+    let autoConfirmDining = process.env.AUTO_CONFIRM_DINING === 'true';
+    
+    try {
+      // Try to get settings from database first
+      const { data: dbSettings, error: dbError } = await supabaseAdmin
+        .from('admin_settings')
+        .select('setting_value')
+        .eq('setting_key', 'auto_confirmation')
+        .single();
+
+      if (dbSettings && !dbError && dbSettings.setting_value) {
+        autoConfirmOmakase = dbSettings.setting_value.autoConfirmOmakase;
+        autoConfirmDining = dbSettings.setting_value.autoConfirmDining;
+        console.log('Using database auto-confirmation settings:', { autoConfirmOmakase, autoConfirmDining });
+      } else {
+        console.log('Using environment auto-confirmation settings:', { autoConfirmOmakase, autoConfirmDining });
+      }
+    } catch (settingsError) {
+      console.error('Error fetching auto-confirmation settings, using environment defaults:', settingsError);
+    }
     
     // Determine if this reservation type should be auto-confirmed
     const shouldAutoConfirm = reservationType === 'omakase' ? autoConfirmOmakase : autoConfirmDining;

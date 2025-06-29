@@ -1632,13 +1632,40 @@ export default function AdminDashboard() {
                 <span>Cancel</span>
               </button>
               <button
-                onClick={() => {
-                  // TODO: Save settings to backend/environment
-                  toast({
-                    title: 'Settings Updated',
-                    description: `Auto-confirmation: Omakase ${settings.autoConfirmOmakase ? 'ON' : 'OFF'}, Dining ${settings.autoConfirmDining ? 'ON' : 'OFF'}`,
-                  })
-                  setShowSettings(false)
+                onClick={async () => {
+                  try {
+                    const response = await fetch('/api/save-auto-confirmation-settings', {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json',
+                      },
+                      body: JSON.stringify({
+                        autoConfirmOmakase: settings.autoConfirmOmakase,
+                        autoConfirmDining: settings.autoConfirmDining
+                      })
+                    })
+
+                    const data = await response.json()
+
+                    if (data.success) {
+                      toast({
+                        title: 'Settings Saved Successfully! ✅',
+                        description: `Auto-confirmation: Omakase ${settings.autoConfirmOmakase ? 'ON' : 'OFF'}, Dining ${settings.autoConfirmDining ? 'ON' : 'OFF'}`,
+                      })
+                      setShowSettings(false)
+                    } else {
+                      toast({
+                        title: 'Failed to Save Settings ❌',
+                        description: data.error || 'Unknown error occurred',
+                      })
+                    }
+                  } catch (error) {
+                    console.error('Error saving settings:', error)
+                    toast({
+                      title: 'Failed to Save Settings ❌',
+                      description: 'Network error - please try again',
+                    })
+                  }
                 }}
                 disabled={!settingsLoaded}
                 className={`group relative px-8 py-3 rounded-xl transition-all duration-300 font-semibold shadow-lg transform ${
