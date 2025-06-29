@@ -213,9 +213,12 @@ export default function AdminDashboard() {
     const weekStart = format(new Date(new Date().setDate(new Date().getDate() - new Date().getDay())), 'yyyy-MM-dd')
     const weekEnd = format(new Date(new Date().setDate(new Date().getDate() + (6 - new Date().getDay()))), 'yyyy-MM-dd')
     
-    const todayReservations = reservationsData.filter(r => r.reservation_date === today).length
-    const weekReservations = reservationsData.filter(r => r.reservation_date >= weekStart && r.reservation_date <= weekEnd).length
-    const confirmedReservations = reservationsData.filter(r => r.status === 'confirmed' || r.status === 'completed')
+    // Filter out cancelled reservations for all stats
+    const activeReservations = reservationsData.filter(r => r.status !== 'cancelled')
+    
+    const todayReservations = activeReservations.filter(r => r.reservation_date === today).length
+    const weekReservations = activeReservations.filter(r => r.reservation_date >= weekStart && r.reservation_date <= weekEnd).length
+    const confirmedReservations = activeReservations.filter(r => r.status === 'confirmed' || r.status === 'completed')
     const totalRevenue = confirmedReservations.reduce((sum, r) => {
       // Omakase is $99 per person, dining is estimated $40 per person average
       const pricePerPerson = r.type === 'omakase' ? 99 : 40
