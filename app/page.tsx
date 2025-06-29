@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabase'
 import { nanoid } from 'nanoid'
 import { useToast } from '../hooks/use-toast'
 import Image from 'next/image'
+import TrendChart from '../components/TrendChart'
 
 interface Reservation {
   id: string
@@ -99,7 +100,12 @@ export default function AdminDashboard() {
     todayReservations: 0,
     weekReservations: 0,
     totalRevenue: 0,
-    avgPartySize: 0
+    avgPartySize: 0,
+    // Trend data: [previous, current, next]
+    dailyTrend: [0, 0, 0], // yesterday, today, tomorrow
+    weeklyTrend: [0, 0, 0], // last week, this week, next week  
+    revenueTrend: [0, 0, 0], // last week revenue, this week, projected next week
+    partySizeTrend: [0, 0, 0] // last week avg, this week, projected next week
   })
   const { toast } = useToast();
 
@@ -209,33 +215,76 @@ export default function AdminDashboard() {
   }
 
   const calculateStats = (reservationsData: Reservation[]) => {
-    const today = format(new Date(), 'yyyy-MM-dd')
-    // Calculate Monday-Sunday week (Monday = start of week)
     const currentDate = new Date()
+    const today = format(currentDate, 'yyyy-MM-dd')
+    const yesterday = format(new Date(currentDate.getTime() - 24 * 60 * 60 * 1000), 'yyyy-MM-dd')
+    const tomorrow = format(new Date(currentDate.getTime() + 24 * 60 * 60 * 1000), 'yyyy-MM-dd')
+    
+    // Calculate Monday-Sunday week (Monday = start of week)
     const dayOfWeek = currentDate.getDay() // 0 = Sunday, 1 = Monday, etc.
     const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1 // Handle Sunday as 6 days from Monday
     const weekStart = format(new Date(currentDate.getTime() - daysFromMonday * 24 * 60 * 60 * 1000), 'yyyy-MM-dd')
     const weekEnd = format(new Date(currentDate.getTime() + (6 - daysFromMonday) * 24 * 60 * 60 * 1000), 'yyyy-MM-dd')
     
+    // Last week and next week calculations
+    const lastWeekStart = format(new Date(currentDate.getTime() - (daysFromMonday + 7) * 24 * 60 * 60 * 1000), 'yyyy-MM-dd')
+    const lastWeekEnd = format(new Date(currentDate.getTime() - (daysFromMonday + 1) * 24 * 60 * 60 * 1000), 'yyyy-MM-dd')
+    const nextWeekStart = format(new Date(currentDate.getTime() + (7 - daysFromMonday) * 24 * 60 * 60 * 1000), 'yyyy-MM-dd')
+    const nextWeekEnd = format(new Date(currentDate.getTime() + (13 - daysFromMonday) * 24 * 60 * 60 * 1000), 'yyyy-MM-dd')
+    
     // Filter out cancelled reservations for all stats
     const activeReservations = reservationsData.filter(r => r.status !== 'cancelled')
     
+    // Daily calculations
+    const yesterdayReservations = activeReservations.filter(r => r.reservation_date === yesterday).length
     const todayReservations = activeReservations.filter(r => r.reservation_date === today).length
+    const tomorrowReservations = activeReservations.filter(r => r.reservation_date === tomorrow).length
+    
+    // Weekly calculations
+    const lastWeekReservations = activeReservations.filter(r => r.reservation_date >= lastWeekStart && r.reservation_date <= lastWeekEnd).length
     const weekReservations = activeReservations.filter(r => r.reservation_date >= weekStart && r.reservation_date <= weekEnd).length
-    const confirmedReservations = activeReservations.filter(r => r.status === 'confirmed' || r.status === 'completed')
-    const totalRevenue = confirmedReservations.reduce((sum, r) => {
-      // Omakase is $99 per person, dining is estimated $40 per person average
-      const pricePerPerson = r.type === 'omakase' ? 99 : 40
-      return sum + (r.party_size * pricePerPerson)
-    }, 0)
-    const avgPartySize = confirmedReservations.length > 0 ? 
-      confirmedReservations.reduce((sum, r) => sum + r.party_size, 0) / confirmedReservations.length : 0
+    const nextWeekReservations = activeReservations.filter(r => r.reservation_date >= nextWeekStart && r.reservation_date <= nextWeekEnd).length
+    
+    // Revenue calculations
+    const getRevenueForPeriod = (start: string, end: string) => {
+      return activeReservations
+        .filter(r => r.reservation_date >= start && r.reservation_date <= end && (r.status === 'confirmed' || r.status === 'completed'))
+        .reduce((sum, r) => {
+          const pricePerPerson = r.type === 'omakase' ? 99 : 40
+          return sum + (r.party_size * pricePerPerson)
+        }, 0)
+    }
+    
+    const lastWeekRevenue = getRevenueForPeriod(lastWeekStart, lastWeekEnd)
+    const totalRevenue = getRevenueForPeriod(weekStart, weekEnd)
+    const nextWeekRevenue = getRevenueForPeriod(nextWeekStart, nextWeekEnd)
+    
+    // Party size calculations
+    const getAvgPartySizeForPeriod = (start: string, end: string) => {
+      const confirmedReservations = activeReservations.filter(r => 
+        r.reservation_date >= start && r.reservation_date <= end && (r.status === 'confirmed' || r.status === 'completed')
+      )
+      return confirmedReservations.length > 0 ? 
+        confirmedReservations.reduce((sum, r) => sum + r.party_size, 0) / confirmedReservations.length : 0
+    }
+    
+    const lastWeekAvgPartySize = getAvgPartySizeForPeriod(lastWeekStart, lastWeekEnd)
+    const avgPartySize = getAvgPartySizeForPeriod(weekStart, weekEnd)
+    const nextWeekAvgPartySize = getAvgPartySizeForPeriod(nextWeekStart, nextWeekEnd)
     
     setStats({
       todayReservations,
       weekReservations,
       totalRevenue,
-      avgPartySize: Math.round(avgPartySize * 10) / 10
+      avgPartySize: Math.round(avgPartySize * 10) / 10,
+      dailyTrend: [yesterdayReservations, todayReservations, tomorrowReservations],
+      weeklyTrend: [lastWeekReservations, weekReservations, nextWeekReservations],
+      revenueTrend: [lastWeekRevenue, totalRevenue, nextWeekRevenue],
+      partySizeTrend: [
+        Math.round(lastWeekAvgPartySize * 10) / 10,
+        Math.round(avgPartySize * 10) / 10,
+        Math.round(nextWeekAvgPartySize * 10) / 10
+      ]
     })
   }
 
@@ -1081,8 +1130,16 @@ export default function AdminDashboard() {
                   <span className="text-lg">📅</span>
                 </div>
               </div>
-              <p className="text-3xl font-bold text-ink-black mb-1">{stats.todayReservations}</p>
-              <p className="text-xs text-charcoal/60">Active reservations</p>
+              <div className="flex items-end justify-between mb-2">
+                <p className="text-3xl font-bold text-ink-black">{stats.todayReservations}</p>
+                <TrendChart 
+                  data={stats.dailyTrend} 
+                  width={50} 
+                  height={20}
+                  className="mb-1"
+                />
+              </div>
+              <p className="text-xs text-charcoal/60">Active reservations • Yesterday → Today → Tomorrow</p>
             </div>
           </div>
           
@@ -1095,8 +1152,16 @@ export default function AdminDashboard() {
                   <span className="text-lg">📊</span>
                 </div>
               </div>
-              <p className="text-3xl font-bold text-ink-black mb-1">{stats.weekReservations}</p>
-              <p className="text-xs text-charcoal/60">Weekly bookings</p>
+              <div className="flex items-end justify-between mb-2">
+                <p className="text-3xl font-bold text-ink-black">{stats.weekReservations}</p>
+                <TrendChart 
+                  data={stats.weeklyTrend} 
+                  width={50} 
+                  height={20}
+                  className="mb-1"
+                />
+              </div>
+              <p className="text-xs text-charcoal/60">Weekly bookings • Last → This → Next Week</p>
             </div>
           </div>
           
@@ -1109,8 +1174,16 @@ export default function AdminDashboard() {
                   <span className="text-lg">💰</span>
                 </div>
               </div>
-              <p className="text-3xl font-bold text-ink-black mb-1">${stats.totalRevenue.toLocaleString()}</p>
-              <p className="text-xs text-charcoal/60">Confirmed bookings</p>
+              <div className="flex items-end justify-between mb-2">
+                <p className="text-3xl font-bold text-ink-black">${stats.totalRevenue.toLocaleString()}</p>
+                <TrendChart 
+                  data={stats.revenueTrend} 
+                  width={50} 
+                  height={20}
+                  className="mb-1"
+                />
+              </div>
+              <p className="text-xs text-charcoal/60">Confirmed bookings • Weekly revenue trend</p>
             </div>
           </div>
           
@@ -1123,8 +1196,16 @@ export default function AdminDashboard() {
                   <span className="text-lg">👥</span>
                 </div>
               </div>
-              <p className="text-3xl font-bold text-ink-black mb-1">{stats.avgPartySize}</p>
-              <p className="text-xs text-charcoal/60">People per table</p>
+              <div className="flex items-end justify-between mb-2">
+                <p className="text-3xl font-bold text-ink-black">{stats.avgPartySize}</p>
+                <TrendChart 
+                  data={stats.partySizeTrend} 
+                  width={50} 
+                  height={20}
+                  className="mb-1"
+                />
+              </div>
+              <p className="text-xs text-charcoal/60">People per table • Weekly average trend</p>
             </div>
           </div>
         </section>
