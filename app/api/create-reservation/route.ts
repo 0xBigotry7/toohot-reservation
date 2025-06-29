@@ -20,6 +20,10 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Determine reservation type and table
+    const reservationType = reservationData.type || 'omakase';
+    const tableName = reservationType === 'omakase' ? 'omakase_reservations' : 'dining_reservations';
+
     // Add default values
     const newReservation = {
       ...reservationData,
@@ -27,9 +31,12 @@ export async function POST(request: NextRequest) {
       confirmation_code: reservationData.confirmation_code || nanoid(8).toUpperCase()
     };
 
+    // Remove the type field from the reservation data since it's not stored in the table
+    delete newReservation.type;
+
     // Create the reservation using service role key (bypasses RLS)
     const { data, error } = await supabaseAdmin
-      .from('omakase_reservations')
+      .from(tableName)
       .insert([newReservation])
       .select()
       .single();
@@ -50,9 +57,9 @@ export async function POST(request: NextRequest) {
           reservation_time: data.reservation_time,
           party_size: data.party_size,
           special_requests: data.special_requests || '',
-          reservation_type: 'omakase'
+          reservation_type: reservationType
         });
-        console.log('Confirmation email sent successfully for reservation:', data.id);
+        console.log(`Confirmation email sent successfully for ${reservationType} reservation:`, data.id);
       } catch (emailError) {
         console.error('Failed to send confirmation email:', emailError);
         // Don't fail the entire request if email fails, just log it

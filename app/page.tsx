@@ -45,6 +45,7 @@ interface NewReservation {
   reservation_date: string
   reservation_time: string
   party_size: number
+  type: 'omakase' | 'dining'
   special_requests: string
   notes: string
 }
@@ -93,6 +94,7 @@ export default function AdminDashboard() {
     reservation_date: '',
     reservation_time: '17:00',
     party_size: 2,
+    type: 'omakase',
     special_requests: '',
     notes: ''
   })
@@ -503,6 +505,7 @@ export default function AdminDashboard() {
         reservation_date: '',
         reservation_time: '17:00',
         party_size: 2,
+        type: 'omakase',
         special_requests: '',
         notes: ''
       })
@@ -1414,6 +1417,24 @@ export default function AdminDashboard() {
                   className="w-full px-4 py-3 border-2 border-copper/20 rounded-xl focus:ring-2 focus:ring-copper focus:border-copper transition-all duration-300 bg-sand-beige/40 text-ink-black placeholder:text-gray-500"
                   required
                 />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-semibold text-ink-black mb-3">Reservation Type *</label>
+                <select
+                  value={newReservation.type}
+                  onChange={(e) => setNewReservation({...newReservation, type: e.target.value as 'omakase' | 'dining'})}
+                  className="w-full px-4 py-3 border-2 border-copper/20 rounded-xl focus:ring-2 focus:ring-copper focus:border-copper transition-all duration-300 bg-sand-beige/40 text-ink-black"
+                  required
+                >
+                  <option value="omakase">Omakase ($99/person • 11-course tasting menu)</option>
+                  <option value="dining">À la Carte Dining (Flexible pricing • Menu selection)</option>
+                </select>
+                <p className="text-xs text-charcoal/60 mt-2">
+                  {newReservation.type === 'omakase' 
+                    ? 'Premium 11-course tasting experience with Sichuan flavors' 
+                    : 'Traditional dining with full à la carte menu options'}
+                </p>
               </div>
               
               <div>
