@@ -468,14 +468,17 @@ export default function AdminDashboard() {
         throw new Error('Reservation not found')
       }
       
-      const wasCancelled = currentReservation?.status === 'cancelled'
+      const previousStatus = currentReservation?.status
       const reservationType = currentReservation.type
       
       let updates: any = { status: newStatus }
       
-      // If changing from cancelled to confirmed, clear cancellation data and generate confirmation code
-      if (wasCancelled && newStatus === 'confirmed') {
-        updates.cancellation_reason = null
+      // If changing to confirmed status from any other status
+      if (newStatus === 'confirmed' && previousStatus !== 'confirmed') {
+        // Clear cancellation data if coming from cancelled status
+        if (previousStatus === 'cancelled') {
+          updates.cancellation_reason = null
+        }
         // Generate confirmation code if it doesn't exist
         if (!currentReservation?.confirmation_code) {
           updates.confirmation_code = Math.random().toString(36).substring(2, 8).toUpperCase()
@@ -499,8 +502,8 @@ export default function AdminDashboard() {
 
       const updatedReservation = await response.json()
 
-      // If changing from cancelled to confirmed, send confirmation email
-      if (wasCancelled && newStatus === 'confirmed') {
+      // If changing to confirmed status from any other status, send confirmation email
+      if (newStatus === 'confirmed' && previousStatus !== 'confirmed') {
         try {
           // Use appropriate confirmation endpoint based on reservation type
           const confirmationEndpoint = reservationType === 'omakase' 
