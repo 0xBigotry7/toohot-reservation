@@ -111,9 +111,10 @@ export default function AdminDashboard() {
   })
   const [showSettings, setShowSettings] = useState(false)
   const [settings, setSettings] = useState({
-    autoConfirmOmakase: process.env.NEXT_PUBLIC_AUTO_CONFIRM_OMAKASE === 'true',
-    autoConfirmDining: process.env.NEXT_PUBLIC_AUTO_CONFIRM_DINING === 'true'
+    autoConfirmOmakase: false, // Will be loaded from server
+    autoConfirmDining: true   // Default recommendation: auto-confirm dining
   })
+  const [settingsLoaded, setSettingsLoaded] = useState(false)
   const { toast } = useToast();
 
   // Improved authentication check
@@ -149,6 +150,7 @@ export default function AdminDashboard() {
   useEffect(() => {
     if (!authenticated) return
     fetchReservations()
+    fetchAutoConfirmationSettings()
   }, [authenticated]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
@@ -218,6 +220,25 @@ export default function AdminDashboard() {
       setError(err.message || 'Failed to load reservations');
     } finally {
       setLoading(false);
+    }
+  }
+
+  const fetchAutoConfirmationSettings = async () => {
+    try {
+      const response = await fetch('/api/get-auto-confirmation-settings')
+      const data = await response.json()
+      
+      if (data.success && data.settings) {
+        setSettings({
+          autoConfirmOmakase: data.settings.autoConfirmOmakase,
+          autoConfirmDining: data.settings.autoConfirmDining
+        })
+      }
+      setSettingsLoaded(true)
+    } catch (error) {
+      console.error('Failed to fetch auto-confirmation settings:', error)
+      // Keep default settings on error
+      setSettingsLoaded(true)
     }
   }
 
@@ -1541,49 +1562,56 @@ export default function AdminDashboard() {
                   Auto-confirmed reservations will immediately send confirmation emails to customers.
                 </p>
                 
-                <div className="space-y-6">
-                  <div className="flex items-center justify-between p-4 bg-white/50 rounded-xl border border-copper/10">
-                    <div>
-                      <h4 className="font-semibold text-ink-black">Omakase Reservations</h4>
-                      <p className="text-sm text-charcoal/60">$99/person • 11-course tasting menu</p>
-                      <p className="text-xs text-charcoal/50 mt-1">
-                        {settings.autoConfirmOmakase 
-                          ? 'Automatically confirmed - no manual approval needed' 
-                          : 'Requires manual confirmation - will remain pending until approved'}
-                      </p>
-                    </div>
-                    <label className="relative inline-flex items-center cursor-pointer">
-                      <input
-                        type="checkbox"
-                        className="sr-only peer"
-                        checked={settings.autoConfirmOmakase}
-                        onChange={(e) => setSettings({...settings, autoConfirmOmakase: e.target.checked})}
-                      />
-                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-copper/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-copper"></div>
-                    </label>
+                {!settingsLoaded ? (
+                  <div className="flex items-center justify-center p-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-copper"></div>
+                    <span className="ml-3 text-charcoal/60">Loading current settings...</span>
                   </div>
-                  
-                  <div className="flex items-center justify-between p-4 bg-white/50 rounded-xl border border-copper/10">
-                    <div>
-                      <h4 className="font-semibold text-ink-black">À la Carte Dining</h4>
-                      <p className="text-sm text-charcoal/60">Flexible pricing • Menu selection</p>
-                      <p className="text-xs text-charcoal/50 mt-1">
-                        {settings.autoConfirmDining 
-                          ? 'Automatically confirmed - no manual approval needed' 
-                          : 'Requires manual confirmation - will remain pending until approved'}
-                      </p>
+                ) : (
+                  <div className="space-y-6">
+                    <div className="flex items-center justify-between p-4 bg-white/50 rounded-xl border border-copper/10">
+                      <div>
+                        <h4 className="font-semibold text-ink-black">Omakase Reservations</h4>
+                        <p className="text-sm text-charcoal/60">$99/person • 11-course tasting menu</p>
+                        <p className="text-xs text-charcoal/50 mt-1">
+                          {settings.autoConfirmOmakase 
+                            ? '✅ Automatically confirmed - no manual approval needed' 
+                            : '⏳ Requires manual confirmation - will remain pending until approved'}
+                        </p>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          className="sr-only peer"
+                          checked={settings.autoConfirmOmakase}
+                          onChange={(e) => setSettings({...settings, autoConfirmOmakase: e.target.checked})}
+                        />
+                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-copper/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-copper"></div>
+                      </label>
                     </div>
-                    <label className="relative inline-flex items-center cursor-pointer">
-                      <input
-                        type="checkbox"
-                        className="sr-only peer"
-                        checked={settings.autoConfirmDining}
-                        onChange={(e) => setSettings({...settings, autoConfirmDining: e.target.checked})}
-                      />
-                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-copper/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-copper"></div>
-                    </label>
+                    
+                    <div className="flex items-center justify-between p-4 bg-white/50 rounded-xl border border-copper/10">
+                      <div>
+                        <h4 className="font-semibold text-ink-black">À la Carte Dining</h4>
+                        <p className="text-sm text-charcoal/60">Flexible pricing • Menu selection</p>
+                        <p className="text-xs text-charcoal/50 mt-1">
+                          {settings.autoConfirmDining 
+                            ? '✅ Automatically confirmed - no manual approval needed' 
+                            : '⏳ Requires manual confirmation - will remain pending until approved'}
+                        </p>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          className="sr-only peer"
+                          checked={settings.autoConfirmDining}
+                          onChange={(e) => setSettings({...settings, autoConfirmDining: e.target.checked})}
+                        />
+                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-copper/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-copper"></div>
+                      </label>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
               
               <div className="bg-blue-50/80 p-4 rounded-xl border border-blue-200/50">
@@ -1608,14 +1636,21 @@ export default function AdminDashboard() {
                   // TODO: Save settings to backend/environment
                   toast({
                     title: 'Settings Updated',
-                    description: 'Auto-confirmation preferences have been saved.',
+                    description: `Auto-confirmation: Omakase ${settings.autoConfirmOmakase ? 'ON' : 'OFF'}, Dining ${settings.autoConfirmDining ? 'ON' : 'OFF'}`,
                   })
                   setShowSettings(false)
                 }}
-                className="group relative bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-8 py-3 rounded-xl hover:from-purple-700 hover:to-indigo-700 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                disabled={!settingsLoaded}
+                className={`group relative px-8 py-3 rounded-xl transition-all duration-300 font-semibold shadow-lg transform ${
+                  settingsLoaded 
+                    ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white hover:from-purple-700 hover:to-indigo-700 hover:shadow-xl hover:-translate-y-0.5' 
+                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                }`}
               >
-                <span>Save Settings</span>
-                <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                <span>{settingsLoaded ? 'Save Settings' : 'Loading...'}</span>
+                {settingsLoaded && (
+                  <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                )}
               </button>
             </div>
           </div>
