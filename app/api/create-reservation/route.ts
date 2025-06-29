@@ -24,10 +24,20 @@ export async function POST(request: NextRequest) {
     const reservationType = reservationData.type || 'omakase';
     const tableName = reservationType === 'omakase' ? 'omakase_reservations' : 'dining_reservations';
 
+    // Auto-confirmation settings - can be configured via environment variables
+    const autoConfirmOmakase = process.env.AUTO_CONFIRM_OMAKASE === 'true';
+    const autoConfirmDining = process.env.AUTO_CONFIRM_DINING === 'true';
+    
+    // Determine if this reservation type should be auto-confirmed
+    const shouldAutoConfirm = reservationType === 'omakase' ? autoConfirmOmakase : autoConfirmDining;
+    
+    // Set initial status based on auto-confirmation setting
+    const initialStatus = shouldAutoConfirm ? 'confirmed' : 'pending';
+
     // Add default values
     const newReservation = {
       ...reservationData,
-      status: reservationData.status || 'confirmed',
+      status: reservationData.status || initialStatus,
       confirmation_code: reservationData.confirmation_code || nanoid(8).toUpperCase()
     };
 
@@ -46,8 +56,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    // Send confirmation email if reservation is confirmed
+    // Handle email notifications based on confirmation status
     if (data.status === 'confirmed' && data.confirmation_code) {
+      // Send customer confirmation email for confirmed reservations
       try {
         await sendCustomerConfirmation({
           customer_name: data.customer_name,
@@ -59,10 +70,24 @@ export async function POST(request: NextRequest) {
           special_requests: data.special_requests || '',
           reservation_type: reservationType
         });
-        console.log(`Confirmation email sent successfully for ${reservationType} reservation:`, data.id);
+        
+        if (shouldAutoConfirm) {
+          console.log(`Auto-confirmed ${reservationType} reservation - customer confirmation sent:`, data.id);
+        } else {
+          console.log(`Manual confirmed ${reservationType} reservation - customer confirmation sent:`, data.id);
+        }
       } catch (emailError) {
-        console.error('Failed to send confirmation email:', emailError);
+        console.error('Failed to send customer confirmation email:', emailError);
         // Don't fail the entire request if email fails, just log it
+      }
+    } else if (data.status === 'pending' && !shouldAutoConfirm) {
+      // Send action required email to owner for pending reservations that need manual confirmation
+      try {
+        // TODO: Implement owner notification email for pending reservations
+        // This would be a new email template notifying the owner that a reservation needs confirmation
+        console.log(`Pending ${reservationType} reservation created - owner notification needed:`, data.id);
+      } catch (emailError) {
+        console.error('Failed to send owner notification email:', emailError);
       }
     }
 

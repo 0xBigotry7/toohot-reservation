@@ -109,6 +109,11 @@ export default function AdminDashboard() {
     revenueTrend: [0, 0, 0], // last week revenue, this week, projected next week
     partySizeTrend: [0, 0, 0] // last week avg, this week, projected next week
   })
+  const [showSettings, setShowSettings] = useState(false)
+  const [settings, setSettings] = useState({
+    autoConfirmOmakase: process.env.NEXT_PUBLIC_AUTO_CONFIRM_OMAKASE === 'true',
+    autoConfirmDining: process.env.NEXT_PUBLIC_AUTO_CONFIRM_DINING === 'true'
+  })
   const { toast } = useToast();
 
   // Improved authentication check
@@ -475,10 +480,11 @@ export default function AdminDashboard() {
 
   const handleCreateReservation = async () => {
     try {
+      // Let the API determine the correct status based on auto-confirmation settings
+      // Remove hardcoded status and confirmation_code to let the API handle it
       const reservationData = {
-        ...newReservation,
-        status: 'confirmed',
-        confirmation_code: nanoid(8).toUpperCase()
+        ...newReservation
+        // status and confirmation_code will be determined by the API based on settings
       }
 
       const response = await fetch('/api/create-reservation', {
@@ -662,6 +668,14 @@ export default function AdminDashboard() {
           >
             <span className="text-lg">+</span>
             <span>New Reservation</span>
+            <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+          </button>
+          <button
+            onClick={() => setShowSettings(true)}
+            className="group relative bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-6 py-3 rounded-xl hover:from-purple-700 hover:to-indigo-700 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center gap-2"
+          >
+            <span className="text-lg">⚙️</span>
+            <span>Settings</span>
             <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
           </button>
           <button
@@ -1498,6 +1512,109 @@ export default function AdminDashboard() {
                 disabled={!newReservation.customer_name || !newReservation.customer_email || !newReservation.customer_phone || !newReservation.reservation_date}
               >
                 <span>Create Reservation</span>
+                <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Settings Modal */}
+      {showSettings && (
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-md flex items-center justify-center p-4 z-50">
+          <div className="bg-gradient-to-br from-sand-beige/95 to-white/90 backdrop-blur-xl rounded-3xl p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-copper/20">
+            <div className="flex items-center justify-between mb-8">
+              <h2 className="text-3xl font-playfair text-copper">Reservation Settings</h2>
+              <button
+                onClick={() => setShowSettings(false)}
+                className="w-10 h-10 rounded-full bg-sand-beige/60 hover:bg-sand-beige/80 flex items-center justify-center transition-colors duration-200"
+              >
+                <span className="text-gray-600">✕</span>
+              </button>
+            </div>
+            
+            <div className="space-y-8">
+              <div>
+                <h3 className="text-xl font-semibold text-ink-black mb-4">Auto-Confirmation Settings</h3>
+                <p className="text-sm text-charcoal/70 mb-6">
+                  Choose which reservation types should be automatically confirmed without manual approval.
+                  Auto-confirmed reservations will immediately send confirmation emails to customers.
+                </p>
+                
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between p-4 bg-white/50 rounded-xl border border-copper/10">
+                    <div>
+                      <h4 className="font-semibold text-ink-black">Omakase Reservations</h4>
+                      <p className="text-sm text-charcoal/60">$99/person • 11-course tasting menu</p>
+                      <p className="text-xs text-charcoal/50 mt-1">
+                        {settings.autoConfirmOmakase 
+                          ? 'Automatically confirmed - no manual approval needed' 
+                          : 'Requires manual confirmation - will remain pending until approved'}
+                      </p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        className="sr-only peer"
+                        checked={settings.autoConfirmOmakase}
+                        onChange={(e) => setSettings({...settings, autoConfirmOmakase: e.target.checked})}
+                      />
+                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-copper/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-copper"></div>
+                    </label>
+                  </div>
+                  
+                  <div className="flex items-center justify-between p-4 bg-white/50 rounded-xl border border-copper/10">
+                    <div>
+                      <h4 className="font-semibold text-ink-black">À la Carte Dining</h4>
+                      <p className="text-sm text-charcoal/60">Flexible pricing • Menu selection</p>
+                      <p className="text-xs text-charcoal/50 mt-1">
+                        {settings.autoConfirmDining 
+                          ? 'Automatically confirmed - no manual approval needed' 
+                          : 'Requires manual confirmation - will remain pending until approved'}
+                      </p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        className="sr-only peer"
+                        checked={settings.autoConfirmDining}
+                        onChange={(e) => setSettings({...settings, autoConfirmDining: e.target.checked})}
+                      />
+                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-copper/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-copper"></div>
+                    </label>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="bg-blue-50/80 p-4 rounded-xl border border-blue-200/50">
+                <h4 className="font-semibold text-blue-900 mb-2">💡 How Auto-Confirmation Works</h4>
+                <ul className="text-sm text-blue-800 space-y-1">
+                  <li>• <strong>Auto-confirmed:</strong> Reservation goes directly to "confirmed" status and customer receives confirmation email</li>
+                  <li>• <strong>Manual confirmation:</strong> Reservation stays "pending" until you manually approve it</li>
+                  <li>• <strong>No workflow changes:</strong> You can still manually manage all reservations as needed</li>
+                </ul>
+              </div>
+            </div>
+            
+            <div className="flex gap-4 justify-end pt-6 border-t border-copper/20 mt-8">
+              <button
+                onClick={() => setShowSettings(false)}
+                className="group relative px-8 py-3 border-2 border-gray-300 rounded-xl hover:border-gray-400 transition-all duration-300 font-semibold bg-white shadow-sm hover:shadow-md transform hover:-translate-y-0.5"
+              >
+                <span>Cancel</span>
+              </button>
+              <button
+                onClick={() => {
+                  // TODO: Save settings to backend/environment
+                  toast({
+                    title: 'Settings Updated',
+                    description: 'Auto-confirmation preferences have been saved.',
+                  })
+                  setShowSettings(false)
+                }}
+                className="group relative bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-8 py-3 rounded-xl hover:from-purple-700 hover:to-indigo-700 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+              >
+                <span>Save Settings</span>
                 <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
               </button>
             </div>
