@@ -1,14 +1,23 @@
 import { NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { createClient } from '@supabase/supabase-js'
+
+const supabaseAdmin = createClient(
+  process.env.SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
 
 export async function GET() {
   try {
+    console.log('🔍 Fetching auto-confirmation settings from database...')
+    
     // First, try to get settings from database
-    const { data: dbSettings, error: dbError } = await supabase()
+    const { data: dbSettings, error: dbError } = await supabaseAdmin
       .from('admin_settings')
       .select('setting_value')
       .eq('setting_key', 'auto_confirmation')
       .single()
+
+    console.log('🗄️ Database query result:', { dbSettings, dbError })
 
     let autoConfirmOmakase: boolean
     let autoConfirmDining: boolean
