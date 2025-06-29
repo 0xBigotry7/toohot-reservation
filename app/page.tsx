@@ -210,8 +210,12 @@ export default function AdminDashboard() {
 
   const calculateStats = (reservationsData: Reservation[]) => {
     const today = format(new Date(), 'yyyy-MM-dd')
-    const weekStart = format(new Date(new Date().setDate(new Date().getDate() - new Date().getDay())), 'yyyy-MM-dd')
-    const weekEnd = format(new Date(new Date().setDate(new Date().getDate() + (6 - new Date().getDay()))), 'yyyy-MM-dd')
+    // Calculate Monday-Sunday week (Monday = start of week)
+    const currentDate = new Date()
+    const dayOfWeek = currentDate.getDay() // 0 = Sunday, 1 = Monday, etc.
+    const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1 // Handle Sunday as 6 days from Monday
+    const weekStart = format(new Date(currentDate.getTime() - daysFromMonday * 24 * 60 * 60 * 1000), 'yyyy-MM-dd')
+    const weekEnd = format(new Date(currentDate.getTime() + (6 - daysFromMonday) * 24 * 60 * 60 * 1000), 'yyyy-MM-dd')
     
     // Filter out cancelled reservations for all stats
     const activeReservations = reservationsData.filter(r => r.status !== 'cancelled')
