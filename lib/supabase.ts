@@ -24,7 +24,7 @@ function getSupabaseClient() {
 // Export a function that returns the client instead of the client directly
 export { getSupabaseClient as supabase }
 
-// Database types
+// Database types - Updated to match enhanced schema
 export interface OmakaseReservation {
   id: string
   customer_name: string
@@ -34,7 +34,10 @@ export interface OmakaseReservation {
   reservation_time: string
   party_size: number
   special_requests?: string
-  status: 'confirmed' | 'pending' | 'cancelled'
+  notes?: string // New: Internal admin notes
+  confirmation_code?: string // New: Customer confirmation code
+  cancellation_reason?: string // New: Reason for cancellation
+  status: 'pending' | 'confirmed' | 'seated' | 'completed' | 'cancelled' | 'no-show' // Updated: All status options
   created_at: string
   updated_at: string
 }

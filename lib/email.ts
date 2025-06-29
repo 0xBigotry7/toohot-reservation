@@ -24,17 +24,21 @@ export interface ReservationEmailData {
   party_size: number
   special_requests?: string
   reservation_id?: string
+  reservation_type?: string
 }
 
 // Customer confirmation email template
 export const getCustomerConfirmationEmail = (data: ReservationEmailData) => {
   const formattedDate = format(parseISO(data.reservation_date + 'T00:00:00'), 'EEEE, MMMM do, yyyy')
-  const totalCost = data.party_size * 99
+  const isOmakase = data.reservation_type === 'omakase'
+  const pricePerPerson = isOmakase ? 99 : 40
+  const totalCost = data.party_size * pricePerPerson
+  const reservationType = isOmakase ? 'Omakase' : 'Dining'
 
   return {
     from: 'TooHot Restaurant <team@toohot.kitchen>',
     to: data.customer_email,
-    subject: `Omakase Reservation Confirmed - ${formattedDate} at ${data.reservation_time}`,
+    subject: `${reservationType} Reservation Confirmed - ${formattedDate} at ${data.reservation_time}`,
     html: `
       <!DOCTYPE html>
       <html>
@@ -61,12 +65,12 @@ export const getCustomerConfirmationEmail = (data: ReservationEmailData) => {
           <div class="container">
             <div class="header">
               <h1>🔥 TooHot Restaurant</h1>
-              <p style="margin: 10px 0 0 0; font-size: 16px; opacity: 0.9;">Omakase Reservation Confirmed</p>
+              <p style="margin: 10px 0 0 0; font-size: 16px; opacity: 0.9;">${reservationType} Reservation Confirmed</p>
             </div>
             
             <div class="content">
               <h2 style="color: #B86F3A; margin-top: 0;">Hey ${data.customer_name}, it's Lil Hot here! 🔥</h2>
-              <p>Yay! Your Omakase reservation is confirmed and we're fired up to welcome you to TooHot. Get ready for a flavor adventure like no other!</p>
+              <p>Yay! Your ${reservationType.toLowerCase()} reservation is confirmed and we're fired up to welcome you to TooHot. Get ready for a flavor adventure like no other!</p>
               <div class="reservation-details">
                 <h3 style="color: #B86F3A; margin-top: 0; margin-bottom: 20px;">Reservation Details</h3>
                 <div class="detail-row">
@@ -83,7 +87,7 @@ export const getCustomerConfirmationEmail = (data: ReservationEmailData) => {
                 </div>
                 <div class="detail-row">
                   <span class="detail-label">Experience:</span>
-                  <span class="detail-value">11-Course Omakase Tasting Menu (2 hours)</span>
+                  <span class="detail-value">${isOmakase ? '11-Course Omakase Tasting Menu (2 hours)' : 'À la carte dining experience'}</span>
                 </div>
                 ${data.special_requests ? `
                 <div class="detail-row">
@@ -91,15 +95,23 @@ export const getCustomerConfirmationEmail = (data: ReservationEmailData) => {
                   <span class="detail-value">${data.special_requests}</span>
                 </div>
                 ` : ''}
+                ${isOmakase ? `
                 <div class="total-cost">
-                  Total Cost: $${totalCost} ($99 per person)
+                  Total Cost: $${totalCost} ($${pricePerPerson} per person)
                 </div>
+                ` : ''}
               </div>
               <h3 style="color: #B86F3A;">What to Expect</h3>
               <ul style="line-height: 1.8;">
+                ${isOmakase ? `
                 <li>11 unforgettable courses, each with a TooHot twist</li>
                 <li>Signature Sichuan flavors, bold spices, and playful surprises</li>
                 <li>Stories, laughter, and a table full of good vibes</li>
+                ` : `
+                <li>Fresh, authentic Sichuan cuisine with bold flavors</li>
+                <li>Signature dishes that bring the heat and excitement</li>
+                <li>Warm hospitality and a vibrant dining atmosphere</li>
+                `}
                 <li>Dietary needs? Just let us know in advance and we'll do our best to accommodate!</li>
               </ul>
               <h3 style="color: #B86F3A;">Before You Arrive</h3>

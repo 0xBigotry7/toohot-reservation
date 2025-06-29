@@ -7,12 +7,12 @@ export async function POST(request: NextRequest) {
     if (!reservation) {
       return NextResponse.json({ error: 'Missing reservation data' }, { status: 400 });
     }
-    // Add reservation type for omakase reservations
-    const reservationWithType = { ...reservation, reservation_type: 'omakase' };
+    // Add reservation type for dining reservations
+    const reservationWithType = { ...reservation, reservation_type: 'dining' };
     await sendCustomerConfirmation(reservationWithType);
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Failed to send customer confirmation:', error);
+    console.error('Failed to send dining confirmation:', error);
     return NextResponse.json({ error: 'Failed to send confirmation' }, { status: 500 });
   }
 } 
