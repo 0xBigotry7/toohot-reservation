@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { nanoid } from 'nanoid';
 import { sendCustomerConfirmation } from '../../../lib/email';
+import { getInitialReservationStatus, shouldAutoConfirm } from '../../../lib/auto-confirmation';
 
 const supabaseAdmin = createClient(
   process.env.SUPABASE_URL!,
@@ -24,34 +25,9 @@ export async function POST(request: NextRequest) {
     const reservationType = reservationData.type || 'omakase';
     const tableName = reservationType === 'omakase' ? 'omakase_reservations' : 'dining_reservations';
 
-    // Auto-confirmation settings - read from database first, then environment variables
-    let autoConfirmOmakase = process.env.AUTO_CONFIRM_OMAKASE === 'true';
-    let autoConfirmDining = process.env.AUTO_CONFIRM_DINING === 'true';
-    
-    try {
-      // Try to get settings from database first
-      const { data: dbSettings, error: dbError } = await supabaseAdmin
-        .from('admin_settings')
-        .select('setting_value')
-        .eq('setting_key', 'auto_confirmation')
-        .single();
-
-      if (dbSettings && !dbError && dbSettings.setting_value) {
-        autoConfirmOmakase = dbSettings.setting_value.autoConfirmOmakase;
-        autoConfirmDining = dbSettings.setting_value.autoConfirmDining;
-        console.log('Using database auto-confirmation settings:', { autoConfirmOmakase, autoConfirmDining });
-      } else {
-        console.log('Using environment auto-confirmation settings:', { autoConfirmOmakase, autoConfirmDining });
-      }
-    } catch (settingsError) {
-      console.error('Error fetching auto-confirmation settings, using environment defaults:', settingsError);
-    }
-    
-    // Determine if this reservation type should be auto-confirmed
-    const shouldAutoConfirm = reservationType === 'omakase' ? autoConfirmOmakase : autoConfirmDining;
-    
-    // Set initial status based on auto-confirmation setting
-    const initialStatus = shouldAutoConfirm ? 'confirmed' : 'pending';
+    // Determine status based on auto-confirmation settings
+    const initialStatus = reservationData.status || await getInitialReservationStatus(reservationType as 'omakase' | 'dining');
+    const autoConfirmed = await shouldAutoConfirm(reservationType as 'omakase' | 'dining');
 
     // Add default values
     const newReservation = {
@@ -90,7 +66,7 @@ export async function POST(request: NextRequest) {
           reservation_type: reservationType
         });
         
-        if (shouldAutoConfirm) {
+        if (autoConfirmed && !reservationData.status) {
           console.log(`Auto-confirmed ${reservationType} reservation - customer confirmation sent:`, data.id);
         } else {
           console.log(`Manual confirmed ${reservationType} reservation - customer confirmation sent:`, data.id);
@@ -99,7 +75,7 @@ export async function POST(request: NextRequest) {
         console.error('Failed to send customer confirmation email:', emailError);
         // Don't fail the entire request if email fails, just log it
       }
-    } else if (data.status === 'pending' && !shouldAutoConfirm) {
+    } else if (data.status === 'pending') {
       // Send action required email to owner for pending reservations that need manual confirmation
       try {
         // TODO: Implement owner notification email for pending reservations

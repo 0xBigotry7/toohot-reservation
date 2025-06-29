@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { sendCustomerConfirmation, sendRestaurantNotification } from '../../../lib/email'
 import { nanoid } from 'nanoid'
+import { getInitialReservationStatus, shouldAutoConfirm } from '../../../lib/auto-confirmation'
 
 // Create Supabase client with service role for admin operations
 const supabase = createClient(
@@ -58,14 +59,18 @@ export async function POST(request: NextRequest) {
       party_size,
       special_requests = '',
       notes = '',
-      status = 'pending'
+      status: requestedStatus // Allow manual status override if provided
     } = body
     
     // Calculate duration based on party size
     const duration_minutes = party_size <= 4 ? 60 : 90
     
+    // Determine status based on auto-confirmation settings (unless manually overridden)
+    const finalStatus = requestedStatus || await getInitialReservationStatus('dining')
+    const autoConfirmed = await shouldAutoConfirm('dining')
+    
     // Generate confirmation code if status is confirmed
-    const confirmation_code = status === 'confirmed' ? nanoid(8).toUpperCase() : null
+    const confirmation_code = finalStatus === 'confirmed' ? nanoid(8).toUpperCase() : null
     
     const { data, error } = await supabase
       .from('dining_reservations')
@@ -79,7 +84,7 @@ export async function POST(request: NextRequest) {
         duration_minutes,
         special_requests,
         notes,
-        status,
+        status: finalStatus,
         confirmation_code
       })
       .select()
@@ -90,8 +95,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to create reservation' }, { status: 500 })
     }
     
-    // Send emails if reservation is confirmed
-    if (status === 'confirmed' && confirmation_code) {
+    // Handle email notifications based on confirmation status
+    if (finalStatus === 'confirmed' && confirmation_code) {
+      // Send customer confirmation email for confirmed reservations
       try {
         await sendCustomerConfirmation({
           customer_name,
@@ -103,9 +109,20 @@ export async function POST(request: NextRequest) {
           special_requests,
           reservation_type: 'dining'
         })
+        
+        if (autoConfirmed && !requestedStatus) {
+          console.log(`Auto-confirmed dining reservation - customer confirmation sent:`, data.id)
+        } else {
+          console.log(`Manual confirmed dining reservation - customer confirmation sent:`, data.id)
+        }
       } catch (emailError) {
-        console.error('Failed to send confirmation email:', emailError)
+        console.error('Failed to send customer confirmation email:', emailError)
+        // Don't fail the entire request if email fails, just log it
       }
+    } else if (finalStatus === 'pending') {
+      // Log that manual confirmation is needed
+      console.log(`Pending dining reservation created - owner notification needed:`, data.id)
+      // TODO: Implement owner notification email for pending reservations
     }
     
     return NextResponse.json({ reservation: data })

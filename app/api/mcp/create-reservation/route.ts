@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { nanoid } from 'nanoid';
 import { sendCustomerConfirmation } from '../../../../lib/email';
 import { format } from 'date-fns';
+import { getInitialReservationStatus, shouldAutoConfirm } from '../../../../lib/auto-confirmation';
 
 const supabase = createClient(
   process.env.SUPABASE_URL!,
@@ -87,10 +88,14 @@ export async function POST(request: NextRequest) {
       }, { status: 409 });
     }
 
-    // Determine table and generate confirmation code
+    // Determine table and status based on auto-confirmation settings
     const tableName = type === 'omakase' ? 'omakase_reservations' : 'dining_reservations';
-    const confirmation_code = nanoid(8).toUpperCase();
-    const status = 'confirmed'; // AI bookings are automatically confirmed
+    const reservationType = type as 'omakase' | 'dining';
+    const status = await getInitialReservationStatus(reservationType);
+    const autoConfirmed = await shouldAutoConfirm(reservationType);
+    
+    // Generate confirmation code if auto-confirmed, or if manually set to confirmed
+    const confirmation_code = status === 'confirmed' ? nanoid(8).toUpperCase() : null;
 
     // Calculate duration for dining reservations
     const duration_minutes = type === 'dining' ? (party_size <= 4 ? 60 : 90) : undefined;
@@ -125,21 +130,35 @@ export async function POST(request: NextRequest) {
       }, { status: 500 });
     }
 
-    // Send confirmation email
-    try {
-      await sendCustomerConfirmation({
-        customer_name,
-        customer_email,
-        customer_phone,
-        reservation_date: formattedDate,
-        reservation_time,
-        party_size,
-        special_requests,
-        reservation_type: type
-      });
-    } catch (emailError) {
-      console.error('Failed to send confirmation email:', emailError);
-      // Don't fail the reservation if email fails
+    // Handle email notifications based on confirmation status
+    let emailSent = false;
+    if (status === 'confirmed' && confirmation_code) {
+      // Send customer confirmation email for confirmed reservations
+      try {
+        await sendCustomerConfirmation({
+          customer_name,
+          customer_email,
+          customer_phone,
+          reservation_date: formattedDate,
+          reservation_time,
+          party_size,
+          special_requests,
+          reservation_type: type
+        });
+        emailSent = true;
+        
+        if (autoConfirmed) {
+          console.log(`Auto-confirmed ${type} reservation via MCP - customer confirmation sent:`, data.id);
+        } else {
+          console.log(`Manual confirmed ${type} reservation via MCP - customer confirmation sent:`, data.id);
+        }
+      } catch (emailError) {
+        console.error('Failed to send customer confirmation email:', emailError);
+        // Don't fail the reservation if email fails
+      }
+    } else if (status === 'pending') {
+      // Log that manual confirmation is needed for MCP reservations
+      console.log(`Pending ${type} reservation created via MCP - owner notification needed:`, data.id);
     }
 
     return NextResponse.json({
@@ -156,8 +175,11 @@ export async function POST(request: NextRequest) {
         status: data.status,
         special_requests: data.special_requests
       },
-      message: `Reservation confirmed for ${customer_name} on ${formattedDate} at ${reservation_time}`,
-      confirmation_email_sent: true
+      message: data.status === 'confirmed' 
+        ? `Reservation confirmed for ${customer_name} on ${formattedDate} at ${reservation_time}`
+        : `Reservation created for ${customer_name} on ${formattedDate} at ${reservation_time} - pending confirmation`,
+      confirmation_email_sent: emailSent,
+      auto_confirmed: autoConfirmed && data.status === 'confirmed'
     });
 
   } catch (error) {
