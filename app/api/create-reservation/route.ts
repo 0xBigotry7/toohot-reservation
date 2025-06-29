@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { nanoid } from 'nanoid';
+import { sendCustomerConfirmation } from '../../../lib/email';
 
 const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
@@ -36,6 +37,26 @@ export async function POST(request: NextRequest) {
     if (error) {
       console.error('Supabase insert error:', error);
       return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    // Send confirmation email if reservation is confirmed
+    if (data.status === 'confirmed' && data.confirmation_code) {
+      try {
+        await sendCustomerConfirmation({
+          customer_name: data.customer_name,
+          customer_email: data.customer_email,
+          customer_phone: data.customer_phone,
+          reservation_date: data.reservation_date,
+          reservation_time: data.reservation_time,
+          party_size: data.party_size,
+          special_requests: data.special_requests || '',
+          reservation_type: 'omakase'
+        });
+        console.log('Confirmation email sent successfully for reservation:', data.id);
+      } catch (emailError) {
+        console.error('Failed to send confirmation email:', emailError);
+        // Don't fail the entire request if email fails, just log it
+      }
     }
 
     return NextResponse.json(data);
