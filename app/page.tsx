@@ -53,13 +53,14 @@ interface NewReservation {
 // Use environment variable for admin password (for demo only; real apps should use server-side auth)
 const ADMIN_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD;
 
+  // Note: These labels will be dynamically translated using the t function
 const RESERVATION_STATUSES = [
-  { value: 'pending', label: 'Pending', color: 'bg-yellow-100 text-yellow-800' },
-  { value: 'confirmed', label: 'Confirmed', color: 'bg-green-100 text-green-800' },
-  { value: 'seated', label: 'Seated', color: 'bg-blue-100 text-blue-800' },
-  { value: 'completed', label: 'Completed', color: 'bg-purple-100 text-purple-800' },
-  { value: 'cancelled', label: 'Cancelled', color: 'bg-red-100 text-red-800' },
-  { value: 'no-show', label: 'No Show', color: 'bg-gray-100 text-gray-800' }
+  { value: 'pending', labelKey: 'pending', color: 'bg-yellow-100 text-yellow-800' },
+  { value: 'confirmed', labelKey: 'confirmed', color: 'bg-green-100 text-green-800' },
+  { value: 'seated', labelKey: 'seated', color: 'bg-blue-100 text-blue-800' },
+  { value: 'completed', labelKey: 'completed', color: 'bg-purple-100 text-purple-800' },
+  { value: 'cancelled', labelKey: 'cancelled', color: 'bg-red-100 text-red-800' },
+  { value: 'no-show', labelKey: 'noShow', color: 'bg-gray-100 text-gray-800' }
 ]
 
 const CANCELLATION_REASONS = [
@@ -131,16 +132,102 @@ export default function AdminDashboard() {
     localStorage.setItem('toohot-language', newLanguage)
   }
 
-  // Translation system
+  // Comprehensive Translation system
   const translations = {
     en: {
+      // Header & Navigation
+      toohotAdmin: "TooHot Admin",
+      reservationManagementDashboard: "Reservation Management Dashboard",
+      newReservation: "New Reservation",
+      settings: "Settings",
+      logout: "Logout",
+      loadingDashboard: "Loading dashboard...",
+      
+      // Calendar & Overview
+      daysOverview: "30 Days Overview",
+      calendarConfirmed: "Confirmed",
+      actionRequired: "Action Required",
+      selectDateToView: "Select a date to view reservations",
+      noReservationsForDate: "No reservations for this date",
+      
+      // Search & Filters
+      searchAllReservations: "Search all reservations...",
+      allStatuses: "All Statuses",
+      showCancelled: "Show Cancelled",
+      searchResults: "Search Results",
+      
+      // Reservation Types
+      omakaseType: "Omakase",
+      diningType: "Dining",
+      
+      // Reservation Actions
+      confirm: "Confirm",
+      edit: "Edit",
+      cancelAction: "Cancel",
+      
+      // Status Labels
+      pending: "Pending",
+      confirmed: "Confirmed",
+      seated: "Seated",
+      completed: "Completed",
+      cancelled: "Cancelled",
+      noShow: "No Show",
+      
+      // Reservation Details
+      email: "Email",
+      phone: "Phone",
+      confirmation: "Confirmation",
+      revenue: "Revenue",
+      created: "Created",
+      fullDate: "Full Date",
+      specialRequests: "Special Requests",
+      internalNotes: "Internal Notes",
+      cancellationReason: "Cancellation Reason",
+      specialRequest: "Special Request",
+      
+      // Statistics Dashboard
+      reservationStatistics: "Reservation Statistics",
+      todayReservations: "Today's Reservations",
+      weekReservations: "This Week",
+      totalRevenue: "Total Revenue",
+      avgPartySize: "Avg Party Size",
+      systemStatus: "System Status",
+      database: "Database",
+      emailService: "Email Service",
+      apiStatus: "API Status",
+      connected: "Connected",
+      active: "Active",
+      healthy: "Healthy",
+      
+      // Trends
+      daily: "Daily",
+      weekly: "Weekly",
+      
+      // Forms - New Reservation
+      createNewReservation: "Create New Reservation",
+      reservationType: "Reservation Type",
+      omakaseReservations: "Omakase Reservations",
+      omakaseDesc: "$99/person • 11-course tasting menu",
+      diningReservations: "À la Carte Dining",
+      diningDesc: "Flexible pricing • Menu selection",
+      customerName: "Customer Name",
+      customerEmail: "Customer Email", 
+      customerPhone: "Customer Phone",
+      reservationDate: "Reservation Date",
+      reservationTime: "Reservation Time",
+      partySize: "Party Size",
+      specialRequestsLabel: "Special Requests",
+      internalNotesLabel: "Internal Notes",
+      createReservation: "Create Reservation",
+      
+      // Forms - Edit Reservation
+      editReservation: "Edit Reservation",
+      saveChanges: "Save Changes",
+      
+      // Settings Modal
       reservationSettings: "Reservation Settings",
       autoConfirmationSettings: "Auto-Confirmation Settings",
       autoConfirmDescription: "Choose which reservation types should be automatically confirmed without manual approval. Auto-confirmed reservations will immediately send confirmation emails to customers.",
-      omakaseReservations: "Omakase Reservations",
-      omakaseDesc: "$99/person • 11-course tasting menu",
-      diningReservations: "À la Carte Dining", 
-      diningDesc: "Flexible pricing • Menu selection",
       autoConfirmed: "✅ Automatically confirmed - no manual approval needed",
       requiresConfirmation: "⏳ Requires manual confirmation - will remain pending until approved",
       language: "Language",
@@ -148,8 +235,9 @@ export default function AdminDashboard() {
       english: "English",
       chinese: "中文",
       loadingSettings: "Loading current settings...",
-      cancel: "Cancel",
       saveSettings: "Save Settings",
+      
+      // Messages & Notifications
       loading: "Loading...",
       settingsSavedTitle: "Settings Saved Successfully! 🌐",
       settingsSavedDesc: "Auto-confirmation now controls ALL reservation sources",
@@ -157,16 +245,128 @@ export default function AdminDashboard() {
       settingsFailedDesc: "Network error - please try again",
       contactRequired: "⚠️ Please provide either an email address or phone number",
       contactProvided: "✅ Contact information provided:",
-      emailOrPhoneRequired: "(Email or Phone required)"
+      emailOrPhoneRequired: "(Email or Phone required)",
+      reservationCreatedTitle: "Reservation Created Successfully! 🎉",
+      reservationUpdatedTitle: "Reservation Updated Successfully! ✨",
+      reservationCancelledTitle: "Reservation Cancelled 📅",
+      statusUpdatedTitle: "Status Updated Successfully! ✅",
+      errorTitle: "Error",
+      
+      // Cancellation Reasons
+      customerRequested: "Customer requested",
+      restaurantUnavailable: "Restaurant unavailable", 
+      noShowReason: "No show",
+      duplicateBooking: "Duplicate booking",
+      weatherEmergency: "Weather/emergency",
+      otherReason: "Other",
+      
+      // Prompts
+      cancelReservationPrompt: "Please provide a reason for cancellation:",
+      commonReasons: "Common reasons:",
+      
+      // Day names
+      monday: "Mon",
+      tuesday: "Tue", 
+      wednesday: "Wed",
+      thursday: "Thu",
+      friday: "Fri",
+      saturday: "Sat",
+      sunday: "Sun"
     },
     zh: {
+      // Header & Navigation
+      toohotAdmin: "TooHot 管理后台",
+      reservationManagementDashboard: "预订管理仪表板",
+      newReservation: "新建预订",
+      settings: "设置",
+      logout: "退出登录",
+      loadingDashboard: "正在加载仪表板...",
+      
+      // Calendar & Overview
+      daysOverview: "30天概览",
+      calendarConfirmed: "已确认",
+      actionRequired: "需要操作",
+      selectDateToView: "选择日期查看预订",
+      noReservationsForDate: "此日期无预订",
+      
+      // Search & Filters
+      searchAllReservations: "搜索所有预订...",
+      allStatuses: "所有状态",
+      showCancelled: "显示已取消",
+      searchResults: "搜索结果",
+      
+      // Reservation Types
+      omakaseType: "无菜单料理",
+      diningType: "单点餐饮",
+      
+      // Reservation Actions
+      confirm: "确认",
+      edit: "编辑",
+      cancelAction: "取消",
+      
+      // Status Labels
+      pending: "待确认",
+      confirmed: "已确认",
+      seated: "已入座",
+      completed: "已完成",
+      cancelled: "已取消",
+      noShow: "未出现",
+      
+      // Reservation Details
+      email: "邮箱",
+      phone: "电话",
+      confirmation: "确认码",
+      revenue: "收入",
+      created: "创建时间",
+      fullDate: "完整日期",
+      specialRequests: "特殊要求",
+      internalNotes: "内部备注",
+      cancellationReason: "取消原因",
+      specialRequest: "特殊要求",
+      
+      // Statistics Dashboard
+      reservationStatistics: "预订统计",
+      todayReservations: "今日预订",
+      weekReservations: "本周预订",
+      totalRevenue: "总收入",
+      avgPartySize: "平均聚会人数",
+      systemStatus: "系统状态",
+      database: "数据库",
+      emailService: "邮件服务",
+      apiStatus: "API状态",
+      connected: "已连接",
+      active: "活跃",
+      healthy: "健康",
+      
+      // Trends
+      daily: "每日",
+      weekly: "每周",
+      
+      // Forms - New Reservation
+      createNewReservation: "创建新预订",
+      reservationType: "预订类型",
+      omakaseReservations: "无菜单料理预订",
+      omakaseDesc: "99美元/人 • 11道菜品尝套餐",
+      diningReservations: "单点餐饮预订",
+      diningDesc: "灵活定价 • 菜单选择",
+      customerName: "客户姓名",
+      customerEmail: "客户邮箱",
+      customerPhone: "客户电话",
+      reservationDate: "预订日期",
+      reservationTime: "预订时间",
+      partySize: "聚会人数",
+      specialRequestsLabel: "特殊要求",
+      internalNotesLabel: "内部备注",
+      createReservation: "创建预订",
+      
+      // Forms - Edit Reservation
+      editReservation: "编辑预订",
+      saveChanges: "保存更改",
+      
+      // Settings Modal
       reservationSettings: "预订设置",
       autoConfirmationSettings: "自动确认设置",
       autoConfirmDescription: "选择哪些预订类型应该自动确认而无需手动批准。自动确认的预订将立即向客户发送确认邮件。",
-      omakaseReservations: "无菜单料理预订",
-      omakaseDesc: "99美元/人 • 11道菜品尝套餐",
-      diningReservations: "单点餐饮",
-      diningDesc: "灵活定价 • 菜单选择",
       autoConfirmed: "✅ 自动确认 - 无需手动批准",
       requiresConfirmation: "⏳ 需要手动确认 - 将保持待定状态直到批准",
       language: "语言",
@@ -174,8 +374,9 @@ export default function AdminDashboard() {
       english: "English",
       chinese: "中文",
       loadingSettings: "正在加载当前设置...",
-      cancel: "取消",
       saveSettings: "保存设置",
+      
+      // Messages & Notifications
       loading: "加载中...",
       settingsSavedTitle: "设置保存成功！🌐",
       settingsSavedDesc: "自动确认现在控制所有预订来源",
@@ -183,11 +384,43 @@ export default function AdminDashboard() {
       settingsFailedDesc: "网络错误 - 请重试",
       contactRequired: "⚠️ 请提供邮箱地址或电话号码",
       contactProvided: "✅ 已提供联系方式：",
-      emailOrPhoneRequired: "(邮箱或电话必填其一)"
+      emailOrPhoneRequired: "(邮箱或电话必填其一)",
+      reservationCreatedTitle: "预订创建成功！🎉",
+      reservationUpdatedTitle: "预订更新成功！✨",
+      reservationCancelledTitle: "预订已取消 📅",
+      statusUpdatedTitle: "状态更新成功！✅",
+      errorTitle: "错误",
+      
+      // Cancellation Reasons
+      customerRequested: "客户要求",
+      restaurantUnavailable: "餐厅不可用",
+      noShowReason: "未出现",
+      duplicateBooking: "重复预订",
+      weatherEmergency: "天气/紧急情况",
+      otherReason: "其他",
+      
+      // Prompts
+      cancelReservationPrompt: "请提供取消原因：",
+      commonReasons: "常见原因：",
+      
+      // Day names
+      monday: "周一",
+      tuesday: "周二",
+      wednesday: "周三", 
+      thursday: "周四",
+      friday: "周五",
+      saturday: "周六",
+      sunday: "周日"
     }
   }
 
   const t = translations[language]
+
+  // Helper function to get translated status label
+  const getStatusLabel = (statusValue: string) => {
+    const status = RESERVATION_STATUSES.find(s => s.value === statusValue)
+    return status ? t[status.labelKey as keyof typeof t] : statusValue
+  }
 
   const { toast } = useToast();
 
@@ -752,7 +985,7 @@ export default function AdminDashboard() {
       <div className="min-h-screen bg-sand-beige flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-copper mx-auto"></div>
-          <p className="mt-4 text-copper elegant-subtitle">Loading dashboard...</p>
+          <p className="mt-4 text-copper elegant-subtitle">{t.loadingDashboard}</p>
         </div>
       </div>
     )
@@ -778,9 +1011,9 @@ export default function AdminDashboard() {
           </div>
           <div>
             <h1 className="text-2xl font-playfair text-copper font-semibold">
-              TooHot Admin
+              {t.toohotAdmin}
             </h1>
-            <p className="text-sm text-charcoal mt-1">Reservation Management Dashboard</p>
+            <p className="text-sm text-charcoal mt-1">{t.reservationManagementDashboard}</p>
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -789,7 +1022,7 @@ export default function AdminDashboard() {
             className="group relative bg-gradient-to-r from-emerald-600 to-green-600 text-white px-6 py-3 rounded-xl hover:from-emerald-700 hover:to-green-700 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center gap-2"
           >
             <span className="text-lg">+</span>
-            <span>New Reservation</span>
+            <span>{t.newReservation}</span>
             <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
           </button>
           <button
@@ -797,14 +1030,14 @@ export default function AdminDashboard() {
             className="group relative bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-6 py-3 rounded-xl hover:from-purple-700 hover:to-indigo-700 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center gap-2"
           >
             <span className="text-lg">⚙️</span>
-            <span>Settings</span>
+            <span>{t.settings}</span>
             <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
           </button>
           <button
             onClick={logout}
             className="group relative bg-gradient-to-r from-copper to-amber-700 text-white px-6 py-3 rounded-xl hover:from-copper/90 hover:to-amber-800 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
           >
-            <span>Logout</span>
+            <span>{t.logout}</span>
             <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
           </button>
         </div>
@@ -817,22 +1050,22 @@ export default function AdminDashboard() {
           {/* Calendar View - Left Side */}
           <div className="xl:col-span-1">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-playfair text-copper">30 Days Overview</h2>
+              <h2 className="text-xl font-playfair text-copper">{t.daysOverview}</h2>
               <div className="flex items-center gap-2 text-xs text-charcoal/60">
                 <div className="flex items-center gap-1">
                   <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                  <span>Confirmed</span>
+                  <span>{t.calendarConfirmed}</span>
                 </div>
                 <div className="flex items-center gap-1 ml-3">
                   <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-                  <span>Action Required</span>
+                  <span>{t.actionRequired}</span>
                 </div>
               </div>
             </div>
             <div className="liquid-glass rounded-2xl shadow-lg p-8 overflow-x-auto wabi-sabi-border backdrop-blur-xl border border-white/20">
               {/* Calendar header: Mon-Sun */}
                               <div className="grid grid-cols-7 mb-3">
-                  {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => (
+                  {[t.monday, t.tuesday, t.wednesday, t.thursday, t.friday, t.saturday, t.sunday].map((d) => (
                     <div key={d} className="text-center font-playfair text-copper text-sm pb-2 font-semibold">{d}</div>
                   ))}
                 </div>
@@ -887,7 +1120,7 @@ export default function AdminDashboard() {
                   </div>
                   <input
                     type="text"
-                    placeholder="Search all reservations..."
+                    placeholder={t.searchAllReservations}
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="pl-12 pr-4 py-3 w-full rounded-xl border border-white/20 bg-white/50 backdrop-blur-sm focus:ring-2 focus:ring-copper/20 focus:border-copper/20 transition-all duration-300 placeholder:text-charcoal/40"
@@ -899,12 +1132,12 @@ export default function AdminDashboard() {
                     onChange={(e) => setStatusFilter(e.target.value)}
                     className="px-4 py-3 rounded-xl border border-white/20 bg-white/50 backdrop-blur-sm focus:ring-2 focus:ring-copper/20 focus:border-copper/20 transition-all duration-300 text-charcoal min-w-[150px]"
                   >
-                    <option value="all">All Statuses</option>
-                    {RESERVATION_STATUSES.map(status => (
-                      <option key={status.value} value={status.value}>
-                        {status.label}
-                      </option>
-                    ))}
+                    <option value="all">{t.allStatuses}</option>
+                                          {RESERVATION_STATUSES.map(status => (
+                        <option key={status.value} value={status.value}>
+                          {t[status.labelKey as keyof typeof t]}
+                        </option>
+                      ))}
                   </select>
                   <label className="flex items-center gap-2 px-4 py-3 rounded-xl border border-white/20 bg-white/50 backdrop-blur-sm cursor-pointer hover:bg-white/60 transition-all duration-300">
                     <input
@@ -913,7 +1146,7 @@ export default function AdminDashboard() {
                       onChange={(e) => setShowCancelled(e.target.checked)}
                       className="form-checkbox h-5 w-5 text-copper rounded border-copper/20 focus:ring-copper"
                     />
-                    <span className="text-charcoal">Show Cancelled</span>
+                    <span className="text-charcoal">{t.showCancelled}</span>
                   </label>
                 </div>
               </div>
@@ -964,7 +1197,7 @@ export default function AdminDashboard() {
                             </div>
                             <div className="flex items-center gap-3">
                               <span className={`px-2 py-1 rounded-full text-xs font-semibold ${RESERVATION_STATUSES.find(s => s.value === reservation.status)?.color || 'bg-gray-100 text-gray-800'}`}>
-                                {RESERVATION_STATUSES.find(s => s.value === reservation.status)?.label || reservation.status}
+                                {getStatusLabel(reservation.status)}
                               </span>
                               <span className="text-copper font-mono text-lg font-bold">{reservation.reservation_time}</span>
                             </div>
@@ -1029,7 +1262,7 @@ export default function AdminDashboard() {
                               className="px-3 py-2 border-2 border-copper/30 rounded-xl text-xs focus:ring-2 focus:ring-copper/50 focus:border-copper transition-all duration-300 liquid-glass bg-sand-beige/60 backdrop-blur-sm shadow-lg hover:shadow-xl font-semibold transform hover:-translate-y-0.5 text-ink-black hover:bg-sand-beige/80"
                             >
                               {RESERVATION_STATUSES.map(status => (
-                                <option key={status.value} value={status.value}>{status.label}</option>
+                                <option key={status.value} value={status.value}>{t[status.labelKey as keyof typeof t]}</option>
                               ))}
                             </select>
                           </div>
@@ -1040,42 +1273,42 @@ export default function AdminDashboard() {
                           <div className="mt-4 pt-4 border-t border-copper/20 animate-in slide-in-from-top-2 duration-200">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-charcoal">
                               <div>
-                                <span className="font-semibold text-copper">Email:</span> {reservation.customer_email}
+                                <span className="font-semibold text-copper">{t.email}:</span> {reservation.customer_email}
                               </div>
                               <div>
-                                <span className="font-semibold text-copper">Phone:</span> {reservation.customer_phone}
+                                <span className="font-semibold text-copper">{t.phone}:</span> {reservation.customer_phone}
                               </div>
                               <div>
-                                <span className="font-semibold text-copper">Confirmation:</span> <span className="font-mono">{reservation.confirmation_code}</span>
+                                <span className="font-semibold text-copper">{t.confirmation}:</span> <span className="font-mono">{reservation.confirmation_code}</span>
                               </div>
                               <div>
-                                <span className="font-semibold text-copper">Revenue:</span> ${reservation.party_size * (reservation.type === 'omakase' ? 99 : 40)}
+                                <span className="font-semibold text-copper">{t.revenue}:</span> ${reservation.party_size * (reservation.type === 'omakase' ? 99 : 40)}
                               </div>
                               <div>
-                                <span className="font-semibold text-copper">Created:</span> {format(new Date(reservation.created_at), 'MMM d, yyyy')}
+                                <span className="font-semibold text-copper">{t.created}:</span> {format(new Date(reservation.created_at), 'MMM d, yyyy')}
                               </div>
                               <div>
-                                <span className="font-semibold text-copper">Full Date:</span> {format(new Date(reservation.reservation_date), 'MMMM d, yyyy')}
+                                <span className="font-semibold text-copper">{t.fullDate}:</span> {format(new Date(reservation.reservation_date), 'MMMM d, yyyy')}
                               </div>
                             </div>
 
                             {reservation.special_requests && (
                               <div className="mt-3 p-3 bg-white/30 rounded-lg">
-                                <span className="font-semibold text-copper">Special Requests:</span>
+                                <span className="font-semibold text-copper">{t.specialRequests}:</span>
                                 <p className="mt-1 text-charcoal">{reservation.special_requests}</p>
                               </div>
                             )}
 
                             {reservation.notes && (
                               <div className="mt-3 p-3 bg-white/30 rounded-lg">
-                                <span className="font-semibold text-copper">Internal Notes:</span>
+                                <span className="font-semibold text-copper">{t.internalNotes}:</span>
                                 <p className="mt-1 text-charcoal">{reservation.notes}</p>
                               </div>
                             )}
 
                             {reservation.cancellation_reason && (
                               <div className="mt-3 p-3 bg-red-50 rounded-lg border border-red-200">
-                                <span className="font-semibold text-red-600">Cancellation Reason:</span>
+                                <span className="font-semibold text-red-600">{t.cancellationReason}:</span>
                                 <p className="mt-1 text-red-600">{reservation.cancellation_reason}</p>
                               </div>
                             )}
@@ -1085,21 +1318,21 @@ export default function AdminDashboard() {
                     ))
                   ) : (
                     <div className="text-center py-8 text-charcoal/60">
-                      No reservations for this date
+                      {t.noReservationsForDate}
                     </div>
                   )}
                 </div>
               </>
             ) : (
               <div className="text-center py-8 text-charcoal/60">
-                Select a date to view reservations
+                {t.selectDateToView}
               </div>
             )}
 
             {/* Global Search Results */}
             {searchTerm && !selectedDate && (
               <div className="mt-6 space-y-4">
-                <h3 className="text-lg font-medium text-charcoal mb-4">Search Results</h3>
+                <h3 className="text-lg font-medium text-charcoal mb-4">{t.searchResults}</h3>
                 {searchAllReservations().map((reservation) => (
                   <div 
                     key={reservation.id} 
@@ -1117,7 +1350,7 @@ export default function AdminDashboard() {
                               : 'bg-blue-100 text-blue-800'
                           }`}>
                             <span>{reservation.type === 'omakase' ? '🍣' : '🍽️'}</span>
-                            <span>{reservation.type === 'omakase' ? 'Omakase' : 'Dining'}</span>
+                            <span>{reservation.type === 'omakase' ? t.omakaseType : t.diningType}</span>
                           </div>
                           <div className="text-copper text-sm font-semibold">
                             📅 {format(new Date(reservation.reservation_date), 'MMM d')}
@@ -1128,13 +1361,13 @@ export default function AdminDashboard() {
                           {reservation.special_requests && (
                             <div className="bg-amber-100 text-amber-800 px-2 py-1 rounded-full text-xs font-semibold flex items-center gap-1">
                               <span>⚠️</span>
-                              <span>Special Request</span>
+                              <span>{t.specialRequest}</span>
                             </div>
                           )}
                         </div>
                         <div className="flex items-center gap-3">
                           <span className={`px-2 py-1 rounded-full text-xs font-semibold ${RESERVATION_STATUSES.find(s => s.value === reservation.status)?.color || 'bg-gray-100 text-gray-800'}`}>
-                            {RESERVATION_STATUSES.find(s => s.value === reservation.status)?.label || reservation.status}
+                            {getStatusLabel(reservation.status)}
                           </span>
                           <span className="text-copper font-mono text-lg font-bold">{reservation.reservation_time}</span>
                         </div>
@@ -1151,7 +1384,7 @@ export default function AdminDashboard() {
                             }}
                           >
                             <span className="text-sm">✓</span>
-                            <span>Confirm</span>
+                            <span>{t.confirm}</span>
                             <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                           </button>
                         )}
@@ -1164,7 +1397,7 @@ export default function AdminDashboard() {
                           className="group relative liquid-glass bg-gradient-to-r from-copper/80 to-amber-600/80 text-white px-4 py-2 rounded-xl hover:from-copper hover:to-amber-700 transition-all duration-300 font-semibold text-sm shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center gap-1 backdrop-blur-sm border border-white/20"
                         >
                           <span className="text-sm">✏️</span>
-                          <span>Edit</span>
+                          <span>{t.edit}</span>
                           <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-sand-beige/20 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                         </button>
 
@@ -1183,7 +1416,7 @@ export default function AdminDashboard() {
                             className="group relative liquid-glass bg-gradient-to-r from-red-400/80 to-rose-500/80 text-white px-4 py-2 rounded-xl hover:from-red-500 hover:to-rose-600 transition-all duration-300 font-semibold text-sm shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center gap-1 backdrop-blur-sm border border-white/20"
                           >
                             <span className="text-sm">✕</span>
-                            <span>Cancel</span>
+                            <span>{t.cancelAction}</span>
                             <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-sand-beige/20 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                           </button>
                         )}
@@ -1199,7 +1432,7 @@ export default function AdminDashboard() {
                           className="px-3 py-2 border-2 border-copper/30 rounded-xl text-xs focus:ring-2 focus:ring-copper/50 focus:border-copper transition-all duration-300 liquid-glass bg-sand-beige/60 backdrop-blur-sm shadow-lg hover:shadow-xl font-semibold transform hover:-translate-y-0.5 text-ink-black hover:bg-sand-beige/80"
                         >
                           {RESERVATION_STATUSES.map(status => (
-                            <option key={status.value} value={status.value}>{status.label}</option>
+                            <option key={status.value} value={status.value}>{t[status.labelKey as keyof typeof t]}</option>
                           ))}
                         </select>
                       </div>
@@ -1764,7 +1997,7 @@ export default function AdminDashboard() {
                 onClick={() => setShowSettings(false)}
                 className="group relative px-8 py-3 border-2 border-gray-300 rounded-xl hover:border-gray-400 transition-all duration-300 font-semibold bg-white shadow-sm hover:shadow-md transform hover:-translate-y-0.5"
               >
-                <span>{t.cancel}</span>
+                <span>{t.cancelAction}</span>
               </button>
               <button
                 onClick={async () => {
