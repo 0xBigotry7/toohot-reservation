@@ -14,11 +14,16 @@ export async function POST(request: NextRequest) {
     const reservationData = await request.json();
     
     // Validate required fields
-    const requiredFields = ['customer_name', 'customer_email', 'customer_phone', 'reservation_date', 'reservation_time', 'party_size'];
+    const requiredFields = ['customer_name', 'reservation_date', 'reservation_time', 'party_size'];
     for (const field of requiredFields) {
       if (!reservationData[field]) {
         return NextResponse.json({ error: `Missing required field: ${field}` }, { status: 400 });
       }
+    }
+
+    // Validate that at least one contact method is provided
+    if (!reservationData.customer_email && !reservationData.customer_phone) {
+      return NextResponse.json({ error: 'Either customer_email or customer_phone is required' }, { status: 400 });
     }
 
     // Determine reservation type and table

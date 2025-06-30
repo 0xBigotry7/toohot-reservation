@@ -173,8 +173,8 @@ export const getRestaurantNotificationEmail = (data: ReservationEmailData) => {
             <div class="content">
               <div class="details">
                 <div class="row"><span class="label">Name:</span> <span class="value">${data.customer_name}</span></div>
-                <div class="row"><span class="label">Email:</span> <span class="value"><a href="mailto:${data.customer_email}">${data.customer_email}</a></span></div>
-                <div class="row"><span class="label">Phone:</span> <span class="value"><a href="tel:${data.customer_phone}">${data.customer_phone}</a></span></div>
+                ${data.customer_email ? `<div class="row"><span class="label">Email:</span> <span class="value"><a href="mailto:${data.customer_email}">${data.customer_email}</a></span></div>` : ''}
+                ${data.customer_phone ? `<div class="row"><span class="label">Phone:</span> <span class="value"><a href="tel:${data.customer_phone}">${data.customer_phone}</a></span></div>` : ''}
                 <div class="row"><span class="label">Date:</span> <span class="value">${formattedDate}</span></div>
                 <div class="row"><span class="label">Time:</span> <span class="value">${data.reservation_time}</span></div>
                 <div class="row"><span class="label">Party Size:</span> <span class="value">${data.party_size}</span></div>
@@ -193,6 +193,12 @@ export const getRestaurantNotificationEmail = (data: ReservationEmailData) => {
 // Send customer confirmation email
 export async function sendCustomerConfirmation(data: ReservationEmailData) {
   try {
+    // Can't send email if no email address provided
+    if (!data.customer_email) {
+      console.log('Skipping customer email - no email address provided for reservation')
+      return { message: 'No email address provided' }
+    }
+    
     const emailData = getCustomerConfirmationEmail(data)
     const result = await getResendClient().emails.send(emailData)
     console.log('Customer confirmation email sent:', result)

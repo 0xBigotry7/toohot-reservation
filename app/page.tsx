@@ -109,6 +109,85 @@ export default function AdminDashboard() {
     revenueTrend: [0, 0, 0], // last week revenue, this week, projected next week
     partySizeTrend: [0, 0, 0] // last week avg, this week, projected next week
   })
+  const [showSettings, setShowSettings] = useState(false)
+  const [settings, setSettings] = useState({
+    autoConfirmOmakase: false, // Will be loaded from server
+    autoConfirmDining: true   // Default recommendation: auto-confirm dining
+  })
+  const [settingsLoaded, setSettingsLoaded] = useState(false)
+  const [language, setLanguage] = useState<'en' | 'zh'>('en')
+
+  // Load language preference from localStorage on mount
+  useEffect(() => {
+    const savedLanguage = localStorage.getItem('toohot-language') as 'en' | 'zh'
+    if (savedLanguage && (savedLanguage === 'en' || savedLanguage === 'zh')) {
+      setLanguage(savedLanguage)
+    }
+  }, [])
+
+  // Save language preference to localStorage when changed
+  const handleLanguageChange = (newLanguage: 'en' | 'zh') => {
+    setLanguage(newLanguage)
+    localStorage.setItem('toohot-language', newLanguage)
+  }
+
+  // Translation system
+  const translations = {
+    en: {
+      reservationSettings: "Reservation Settings",
+      autoConfirmationSettings: "Auto-Confirmation Settings",
+      autoConfirmDescription: "Choose which reservation types should be automatically confirmed without manual approval. Auto-confirmed reservations will immediately send confirmation emails to customers.",
+      omakaseReservations: "Omakase Reservations",
+      omakaseDesc: "$99/person • 11-course tasting menu",
+      diningReservations: "À la Carte Dining", 
+      diningDesc: "Flexible pricing • Menu selection",
+      autoConfirmed: "✅ Automatically confirmed - no manual approval needed",
+      requiresConfirmation: "⏳ Requires manual confirmation - will remain pending until approved",
+      language: "Language",
+      languageDesc: "Choose your preferred language for the admin interface",
+      english: "English",
+      chinese: "中文",
+      loadingSettings: "Loading current settings...",
+      cancel: "Cancel",
+      saveSettings: "Save Settings",
+      loading: "Loading...",
+      settingsSavedTitle: "Settings Saved Successfully! 🌐",
+      settingsSavedDesc: "Auto-confirmation now controls ALL reservation sources",
+      settingsFailedTitle: "Failed to Save Settings ❌",
+      settingsFailedDesc: "Network error - please try again",
+      contactRequired: "⚠️ Please provide either an email address or phone number",
+      contactProvided: "✅ Contact information provided:",
+      emailOrPhoneRequired: "(Email or Phone required)"
+    },
+    zh: {
+      reservationSettings: "预订设置",
+      autoConfirmationSettings: "自动确认设置",
+      autoConfirmDescription: "选择哪些预订类型应该自动确认而无需手动批准。自动确认的预订将立即向客户发送确认邮件。",
+      omakaseReservations: "无菜单料理预订",
+      omakaseDesc: "99美元/人 • 11道菜品尝套餐",
+      diningReservations: "单点餐饮",
+      diningDesc: "灵活定价 • 菜单选择",
+      autoConfirmed: "✅ 自动确认 - 无需手动批准",
+      requiresConfirmation: "⏳ 需要手动确认 - 将保持待定状态直到批准",
+      language: "语言",
+      languageDesc: "选择管理界面的首选语言",
+      english: "English",
+      chinese: "中文",
+      loadingSettings: "正在加载当前设置...",
+      cancel: "取消",
+      saveSettings: "保存设置",
+      loading: "加载中...",
+      settingsSavedTitle: "设置保存成功！🌐",
+      settingsSavedDesc: "自动确认现在控制所有预订来源",
+      settingsFailedTitle: "保存设置失败 ❌",
+      settingsFailedDesc: "网络错误 - 请重试",
+      contactRequired: "⚠️ 请提供邮箱地址或电话号码",
+      contactProvided: "✅ 已提供联系方式：",
+      emailOrPhoneRequired: "(邮箱或电话必填其一)"
+    }
+  }
+
+  const t = translations[language]
 
   const { toast } = useToast();
 
@@ -145,7 +224,27 @@ export default function AdminDashboard() {
   useEffect(() => {
     if (!authenticated) return
     fetchReservations()
+    fetchAutoConfirmationSettings()
   }, [authenticated]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const fetchAutoConfirmationSettings = async () => {
+    try {
+      const response = await fetch('/api/get-auto-confirmation-settings')
+      const data = await response.json()
+      
+      if (data.success && data.settings) {
+        setSettings({
+          autoConfirmOmakase: data.settings.autoConfirmOmakase,
+          autoConfirmDining: data.settings.autoConfirmDining
+        })
+      }
+      setSettingsLoaded(true)
+    } catch (error) {
+      console.error('Failed to fetch auto-confirmation settings:', error)
+      // Keep default settings on error
+      setSettingsLoaded(true)
+    }
+  }
 
   useEffect(() => {
     // Generate next 30 days from today
@@ -477,6 +576,31 @@ export default function AdminDashboard() {
   }
 
   const handleCreateReservation = async () => {
+    // Validate required fields
+    if (!newReservation.customer_name.trim()) {
+      toast({
+        title: 'Validation Error ❌',
+        description: 'Customer name is required',
+      })
+      return
+    }
+
+    if (!newReservation.customer_email.trim() && !newReservation.customer_phone.trim()) {
+      toast({
+        title: 'Validation Error ❌',
+        description: 'Please provide either an email address or phone number',
+      })
+      return
+    }
+
+    if (!newReservation.reservation_date) {
+      toast({
+        title: 'Validation Error ❌',
+        description: 'Reservation date is required',
+      })
+      return
+    }
+
     try {
       // Let the API determine the correct status based on auto-confirmation settings
       // Remove hardcoded status and confirmation_code to let the API handle it
@@ -668,7 +792,14 @@ export default function AdminDashboard() {
             <span>New Reservation</span>
             <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
           </button>
-
+          <button
+            onClick={() => setShowSettings(true)}
+            className="group relative bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-6 py-3 rounded-xl hover:from-purple-700 hover:to-indigo-700 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center gap-2"
+          >
+            <span className="text-lg">⚙️</span>
+            <span>Settings</span>
+            <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+          </button>
           <button
             onClick={logout}
             className="group relative bg-gradient-to-r from-copper to-amber-700 text-white px-6 py-3 rounded-xl hover:from-copper/90 hover:to-amber-800 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
@@ -1390,25 +1521,38 @@ export default function AdminDashboard() {
               </div>
               
               <div>
-                <label className="block text-sm font-semibold text-ink-black mb-3">Email *</label>
+                <label className="block text-sm font-semibold text-ink-black mb-3">
+                  Email <span className="text-gray-500 font-normal">{t.emailOrPhoneRequired}</span>
+                </label>
                 <input
                   type="email"
                   value={newReservation.customer_email}
                   onChange={(e) => setNewReservation({...newReservation, customer_email: e.target.value})}
                   className="w-full px-4 py-3 border-2 border-copper/20 rounded-xl focus:ring-2 focus:ring-copper focus:border-copper transition-all duration-300 bg-sand-beige/40 text-ink-black placeholder:text-gray-500"
-                  required
+                  placeholder="customer@email.com"
                 />
               </div>
               
               <div>
-                <label className="block text-sm font-semibold text-ink-black mb-3">Phone *</label>
+                <label className="block text-sm font-semibold text-ink-black mb-3">
+                  Phone <span className="text-gray-500 font-normal">{t.emailOrPhoneRequired}</span>
+                </label>
                 <input
                   type="tel"
                   value={newReservation.customer_phone}
                   onChange={(e) => setNewReservation({...newReservation, customer_phone: e.target.value})}
                   className="w-full px-4 py-3 border-2 border-copper/20 rounded-xl focus:ring-2 focus:ring-copper focus:border-copper transition-all duration-300 bg-sand-beige/40 text-ink-black placeholder:text-gray-500"
-                  required
+                  placeholder="(555) 123-4567"
                 />
+                {/* Contact validation indicator */}
+                {!newReservation.customer_email && !newReservation.customer_phone && (
+                  <p className="text-xs text-red-500 mt-1">{t.contactRequired}</p>
+                )}
+                {(newReservation.customer_email || newReservation.customer_phone) && (
+                  <p className="text-xs text-green-600 mt-1">
+                    {t.contactProvided} {newReservation.customer_email ? 'Email' : ''}{newReservation.customer_email && newReservation.customer_phone ? ' & ' : ''}{newReservation.customer_phone ? 'Phone' : ''}
+                  </p>
+                )}
               </div>
               
               <div>
@@ -1500,7 +1644,7 @@ export default function AdminDashboard() {
               <button
                 onClick={handleCreateReservation}
                 className="group relative bg-gradient-to-r from-emerald-600 to-green-600 text-white px-8 py-3 rounded-xl hover:from-emerald-700 hover:to-green-700 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-md"
-                disabled={!newReservation.customer_name || !newReservation.customer_email || !newReservation.customer_phone || !newReservation.reservation_date}
+                disabled={!newReservation.customer_name || (!newReservation.customer_email && !newReservation.customer_phone) || !newReservation.reservation_date}
               >
                 <span>Create Reservation</span>
                 <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
@@ -1510,6 +1654,170 @@ export default function AdminDashboard() {
         </div>
       )}
 
+      {/* Settings Modal */}
+      {showSettings && (
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-md flex items-center justify-center p-4 z-50">
+          <div className="bg-gradient-to-br from-sand-beige/95 to-white/90 backdrop-blur-xl rounded-3xl p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-copper/20">
+            <div className="flex items-center justify-between mb-8">
+              <h2 className="text-3xl font-playfair text-copper">{t.reservationSettings}</h2>
+              <button
+                onClick={() => setShowSettings(false)}
+                className="w-10 h-10 rounded-full bg-sand-beige/60 hover:bg-sand-beige/80 flex items-center justify-center transition-colors duration-200"
+              >
+                <span className="text-gray-600">✕</span>
+              </button>
+            </div>
+            
+            <div className="space-y-8">
+              {/* Language Toggle */}
+              <div>
+                <h3 className="text-xl font-semibold text-ink-black mb-4">{t.language}</h3>
+                <p className="text-sm text-charcoal/70 mb-4">{t.languageDesc}</p>
+                <div className="flex items-center justify-between p-4 bg-white/50 rounded-xl border border-copper/10">
+                  <div>
+                    <h4 className="font-semibold text-ink-black">{t.language}</h4>
+                    <p className="text-sm text-charcoal/60">
+                      {language === 'en' ? 'English (Current)' : '中文 (当前)'}
+                    </p>
+                  </div>
+                  <div className="flex bg-gray-200 rounded-full p-1">
+                    <button
+                      onClick={() => handleLanguageChange('en')}
+                      className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
+                        language === 'en' 
+                          ? 'bg-copper text-white shadow-sm' 
+                          : 'text-gray-600 hover:text-gray-800'
+                      }`}
+                    >
+                      {t.english}
+                    </button>
+                    <button
+                      onClick={() => handleLanguageChange('zh')}
+                      className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
+                        language === 'zh' 
+                          ? 'bg-copper text-white shadow-sm' 
+                          : 'text-gray-600 hover:text-gray-800'
+                      }`}
+                    >
+                      {t.chinese}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Auto-Confirmation Settings */}
+              <div>
+                <h3 className="text-xl font-semibold text-ink-black mb-4">{t.autoConfirmationSettings}</h3>
+                <p className="text-sm text-charcoal/70 mb-6">{t.autoConfirmDescription}</p>
+                
+                {!settingsLoaded ? (
+                  <div className="flex items-center justify-center p-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-copper"></div>
+                    <span className="ml-3 text-charcoal/60">{t.loadingSettings}</span>
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    <div className="flex items-center justify-between p-4 bg-white/50 rounded-xl border border-copper/10">
+                      <div>
+                        <h4 className="font-semibold text-ink-black">{t.omakaseReservations}</h4>
+                        <p className="text-sm text-charcoal/60">{t.omakaseDesc}</p>
+                        <p className="text-xs text-charcoal/50 mt-1">
+                          {settings.autoConfirmOmakase ? t.autoConfirmed : t.requiresConfirmation}
+                        </p>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          className="sr-only peer"
+                          checked={settings.autoConfirmOmakase}
+                          onChange={(e) => setSettings({...settings, autoConfirmOmakase: e.target.checked})}
+                        />
+                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-copper/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-copper"></div>
+                      </label>
+                    </div>
+                    
+                    <div className="flex items-center justify-between p-4 bg-white/50 rounded-xl border border-copper/10">
+                      <div>
+                        <h4 className="font-semibold text-ink-black">{t.diningReservations}</h4>
+                        <p className="text-sm text-charcoal/60">{t.diningDesc}</p>
+                        <p className="text-xs text-charcoal/50 mt-1">
+                          {settings.autoConfirmDining ? t.autoConfirmed : t.requiresConfirmation}
+                        </p>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          className="sr-only peer"
+                          checked={settings.autoConfirmDining}
+                          onChange={(e) => setSettings({...settings, autoConfirmDining: e.target.checked})}
+                        />
+                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-copper/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-copper"></div>
+                      </label>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+            
+            <div className="flex gap-4 justify-end pt-6 border-t border-copper/20 mt-8">
+              <button
+                onClick={() => setShowSettings(false)}
+                className="group relative px-8 py-3 border-2 border-gray-300 rounded-xl hover:border-gray-400 transition-all duration-300 font-semibold bg-white shadow-sm hover:shadow-md transform hover:-translate-y-0.5"
+              >
+                <span>{t.cancel}</span>
+              </button>
+              <button
+                onClick={async () => {
+                  try {
+                    const response = await fetch('/api/save-auto-confirmation-settings', {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json',
+                      },
+                      body: JSON.stringify({
+                        autoConfirmOmakase: settings.autoConfirmOmakase,
+                        autoConfirmDining: settings.autoConfirmDining
+                      })
+                    })
+
+                    const data = await response.json()
+
+                    if (data.success) {
+                      toast({
+                        title: t.settingsSavedTitle,
+                        description: `${t.settingsSavedDesc}: ${t.omakaseReservations} ${settings.autoConfirmOmakase ? 'ON' : 'OFF'}, ${t.diningReservations} ${settings.autoConfirmDining ? 'ON' : 'OFF'}`,
+                      })
+                      setShowSettings(false)
+                    } else {
+                      toast({
+                        title: t.settingsFailedTitle,
+                        description: data.error || 'Unknown error occurred',
+                      })
+                    }
+                  } catch (error) {
+                    console.error('Error saving settings:', error)
+                    toast({
+                      title: t.settingsFailedTitle,
+                      description: t.settingsFailedDesc,
+                    })
+                  }
+                }}
+                disabled={!settingsLoaded}
+                className={`group relative px-8 py-3 rounded-xl transition-all duration-300 font-semibold shadow-lg transform ${
+                  settingsLoaded 
+                    ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white hover:from-purple-700 hover:to-indigo-700 hover:shadow-xl hover:-translate-y-0.5' 
+                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                }`}
+              >
+                <span>{settingsLoaded ? t.saveSettings : t.loading}</span>
+                {settingsLoaded && (
+                  <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   )

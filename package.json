@@ -7,7 +7,14 @@
     "build": "next build",
     "start": "next start -p 3002",
     "lint": "next lint",
-    "deploy": "vercel --prod"
+    "deploy": "vercel --prod",
+    "type-check": "tsc --noEmit",
+    "analyze": "ANALYZE=true npm run build",
+    "production-build": "NODE_ENV=production npm run type-check && npm run lint && npm run build",
+    "health-check": "curl -f http://localhost:3002/api/health || exit 1",
+    "db-indexes": "echo 'Run database/production_indexes.sql in Supabase SQL Editor'",
+    "security-audit": "npm audit --audit-level moderate",
+    "pre-deploy": "npm run security-audit && npm run production-build"
   },
   "dependencies": {
     "@headlessui/react": "^1.7.17",
@@ -20,7 +27,7 @@
     "date-fns": "^2.30.0",
     "lucide-react": "^0.294.0",
     "nanoid": "^5.0.4",
-    "next": "14.0.4",
+    "next": "^14.2.30",
     "postcss": "^8",
     "react": "^18",
     "react-dom": "^18",
