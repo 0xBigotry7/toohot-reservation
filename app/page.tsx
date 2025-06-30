@@ -179,7 +179,6 @@ export default function AdminDashboard() {
       confirmation: "Confirmation",
       revenue: "Revenue",
       created: "Created",
-      fullDate: "Full Date",
       specialRequests: "Special Requests",
       internalNotes: "Internal Notes",
       cancellationReason: "Cancellation Reason",
@@ -318,7 +317,6 @@ export default function AdminDashboard() {
       confirmation: "确认码",
       revenue: "收入",
       created: "创建时间",
-      fullDate: "完整日期",
       specialRequests: "特殊要求",
       internalNotes: "内部备注",
       cancellationReason: "取消原因",
@@ -1287,9 +1285,6 @@ export default function AdminDashboard() {
                               <div>
                                 <span className="font-semibold text-copper">{t.created}:</span> {format(new Date(reservation.created_at), 'MMM d, yyyy')}
                               </div>
-                              <div>
-                                <span className="font-semibold text-copper">{t.fullDate}:</span> {format(new Date(reservation.reservation_date), 'MMMM d, yyyy')}
-                              </div>
                             </div>
 
                             {reservation.special_requests && (
@@ -1443,42 +1438,39 @@ export default function AdminDashboard() {
                       <div className="mt-4 pt-4 border-t border-copper/20 animate-in slide-in-from-top-2 duration-200">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-charcoal">
                           <div>
-                            <span className="font-semibold text-copper">Email:</span> {reservation.customer_email}
+                            <span className="font-semibold text-copper">{t.email}:</span> {reservation.customer_email}
                           </div>
                           <div>
-                            <span className="font-semibold text-copper">Phone:</span> {reservation.customer_phone}
+                            <span className="font-semibold text-copper">{t.phone}:</span> {reservation.customer_phone}
                           </div>
                           <div>
-                            <span className="font-semibold text-copper">Confirmation:</span> <span className="font-mono">{reservation.confirmation_code}</span>
+                            <span className="font-semibold text-copper">{t.confirmation}:</span> <span className="font-mono">{reservation.confirmation_code}</span>
                           </div>
                           <div>
-                            <span className="font-semibold text-copper">Revenue:</span> ${reservation.party_size * (reservation.type === 'omakase' ? 99 : 40)}
+                            <span className="font-semibold text-copper">{t.revenue}:</span> ${reservation.party_size * (reservation.type === 'omakase' ? 99 : 40)}
                           </div>
                           <div>
-                            <span className="font-semibold text-copper">Created:</span> {format(new Date(reservation.created_at), 'MMM d, yyyy')}
-                          </div>
-                          <div>
-                            <span className="font-semibold text-copper">Full Date:</span> {format(new Date(reservation.reservation_date), 'MMMM d, yyyy')}
+                            <span className="font-semibold text-copper">{t.created}:</span> {format(new Date(reservation.created_at), 'MMM d, yyyy')}
                           </div>
                         </div>
 
                         {reservation.special_requests && (
                           <div className="mt-3 p-3 bg-white/30 rounded-lg">
-                            <span className="font-semibold text-copper">Special Requests:</span>
+                            <span className="font-semibold text-copper">{t.specialRequests}:</span>
                             <p className="mt-1 text-charcoal">{reservation.special_requests}</p>
                           </div>
                         )}
 
                         {reservation.notes && (
                           <div className="mt-3 p-3 bg-white/30 rounded-lg">
-                            <span className="font-semibold text-copper">Internal Notes:</span>
+                            <span className="font-semibold text-copper">{t.internalNotes}:</span>
                             <p className="mt-1 text-charcoal">{reservation.notes}</p>
                           </div>
                         )}
 
                         {reservation.cancellation_reason && (
                           <div className="mt-3 p-3 bg-red-50 rounded-lg border border-red-200">
-                            <span className="font-semibold text-red-600">Cancellation Reason:</span>
+                            <span className="font-semibold text-red-600">{t.cancellationReason}:</span>
                             <p className="mt-1 text-red-600">{reservation.cancellation_reason}</p>
                           </div>
                         )}
