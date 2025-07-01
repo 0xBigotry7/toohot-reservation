@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { getSeatCapacitySettings } from '@/lib/server-utils';
+import { getSeatCapacitySettings, isDateClosed, isReservationTypeAvailable } from '@/lib/server-utils';
 
 const supabaseAdmin = createClient(
   process.env.SUPABASE_URL!,
@@ -53,6 +53,27 @@ export async function POST(request: NextRequest) {
         success: false,
         available: false,
         reason: 'Cannot make reservations for past dates'
+      });
+    }
+
+    // Check if the date is manually closed by admin
+    const dateIsClosed = await isDateClosed(date);
+    if (dateIsClosed) {
+      return NextResponse.json({
+        success: true,
+        available: false,
+        reason: 'This date has been closed for reservations by the restaurant'
+      });
+    }
+
+    // Check if the reservation type is available on this day of the week
+    const typeIsAvailable = await isReservationTypeAvailable(type as 'omakase' | 'dining', date);
+    if (!typeIsAvailable) {
+      const dayName = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][new Date(date).getDay()];
+      return NextResponse.json({
+        success: true,
+        available: false,
+        reason: `${type === 'omakase' ? 'Omakase' : 'Dining'} reservations are not available on ${dayName}s`
       });
     }
 
