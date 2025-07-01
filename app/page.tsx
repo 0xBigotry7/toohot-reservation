@@ -116,6 +116,13 @@ export default function AdminDashboard() {
     autoConfirmDining: true   // Default recommendation: auto-confirm dining
   })
   const [settingsLoaded, setSettingsLoaded] = useState(false)
+  
+  // Seat capacity settings
+  const [seatCapacity, setSeatCapacity] = useState({
+    omakaseCapacity: 12, // Default omakase capacity
+    diningCapacity: 40   // Default dining capacity
+  })
+  const [capacityLoaded, setCapacityLoaded] = useState(false)
   const [language, setLanguage] = useState<'en' | 'zh'>('en')
 
   // Load language preference from localStorage on mount
@@ -235,6 +242,14 @@ export default function AdminDashboard() {
       chinese: "中文",
       loadingSettings: "Loading current settings...",
       saveSettings: "Save Settings",
+      
+      // Seat Capacity Settings
+      seatCapacitySettings: "Seat Capacity Settings",
+      seatCapacityDescription: "Configure the maximum number of seats available for each reservation type. This controls how many guests can be accommodated at any given time slot.",
+      omakaseCapacityLabel: "Omakase Maximum Seats",
+      diningCapacityLabel: "À la Carte Maximum Seats",
+      capacityHelpText: "Seats (1-200)",
+      loadingCapacitySettings: "Loading seat capacity settings...",
       
       // Messages & Notifications
       loading: "Loading...",
@@ -374,6 +389,14 @@ export default function AdminDashboard() {
       loadingSettings: "正在加载当前设置...",
       saveSettings: "保存设置",
       
+      // Seat Capacity Settings
+      seatCapacitySettings: "座位容量设置",
+      seatCapacityDescription: "配置每种预订类型的最大可用座位数。这控制在任何给定时间段可以容纳多少客人。",
+      omakaseCapacityLabel: "无菜单料理最大座位数",
+      diningCapacityLabel: "单点餐饮最大座位数",
+      capacityHelpText: "座位数 (1-200)",
+      loadingCapacitySettings: "正在加载座位容量设置...",
+      
       // Messages & Notifications
       loading: "加载中...",
       settingsSavedTitle: "设置保存成功！🌐",
@@ -456,6 +479,7 @@ export default function AdminDashboard() {
     if (!authenticated) return
     fetchReservations()
     fetchAutoConfirmationSettings()
+    fetchSeatCapacitySettings()
   }, [authenticated]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchAutoConfirmationSettings = async () => {
@@ -474,6 +498,25 @@ export default function AdminDashboard() {
       console.error('Failed to fetch auto-confirmation settings:', error)
       // Keep default settings on error
       setSettingsLoaded(true)
+    }
+  }
+
+  const fetchSeatCapacitySettings = async () => {
+    try {
+      const response = await fetch('/api/get-seat-capacity-settings')
+      const data = await response.json()
+      
+      if (data.success && data.settings) {
+        setSeatCapacity({
+          omakaseCapacity: data.settings.omakaseCapacity,
+          diningCapacity: data.settings.diningCapacity
+        })
+      }
+      setCapacityLoaded(true)
+    } catch (error) {
+      console.error('Failed to fetch seat capacity settings:', error)
+      // Keep default settings on error
+      setCapacityLoaded(true)
     }
   }
 
@@ -1988,6 +2031,53 @@ export default function AdminDashboard() {
                   </div>
                 )}
               </div>
+
+              {/* Seat Capacity Settings */}
+              <div>
+                <h3 className="text-xl font-semibold text-ink-black mb-4">{t.seatCapacitySettings}</h3>
+                <p className="text-sm text-charcoal/70 mb-6">{t.seatCapacityDescription}</p>
+                
+                {!capacityLoaded ? (
+                  <div className="flex items-center justify-center p-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-copper"></div>
+                    <span className="ml-3 text-charcoal/60">{t.loadingCapacitySettings}</span>
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    <div className="flex items-center justify-between p-4 bg-white/50 rounded-xl border border-copper/10">
+                      <div className="flex-1 mr-4">
+                        <h4 className="font-semibold text-ink-black mb-2">{t.omakaseCapacityLabel}</h4>
+                        <p className="text-sm text-charcoal/60 mb-3">{t.omakaseDesc}</p>
+                        <input
+                          type="number"
+                          min="1"
+                          max="200"
+                          value={seatCapacity.omakaseCapacity}
+                          onChange={(e) => setSeatCapacity({...seatCapacity, omakaseCapacity: parseInt(e.target.value) || 1})}
+                          className="w-24 px-3 py-2 border-2 border-copper/20 rounded-lg focus:ring-2 focus:ring-copper/20 focus:border-copper/20 transition-all duration-300 bg-white text-ink-black font-semibold text-center"
+                        />
+                        <span className="ml-2 text-sm text-charcoal/60">{t.capacityHelpText}</span>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center justify-between p-4 bg-white/50 rounded-xl border border-copper/10">
+                      <div className="flex-1 mr-4">
+                        <h4 className="font-semibold text-ink-black mb-2">{t.diningCapacityLabel}</h4>
+                        <p className="text-sm text-charcoal/60 mb-3">{t.diningDesc}</p>
+                        <input
+                          type="number"
+                          min="1"
+                          max="200"
+                          value={seatCapacity.diningCapacity}
+                          onChange={(e) => setSeatCapacity({...seatCapacity, diningCapacity: parseInt(e.target.value) || 1})}
+                          className="w-24 px-3 py-2 border-2 border-copper/20 rounded-lg focus:ring-2 focus:ring-copper/20 focus:border-copper/20 transition-all duration-300 bg-white text-ink-black font-semibold text-center"
+                        />
+                        <span className="ml-2 text-sm text-charcoal/60">{t.capacityHelpText}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
             
             <div className="flex gap-4 justify-end pt-6 border-t border-copper/20 mt-8">
@@ -2000,29 +2090,43 @@ export default function AdminDashboard() {
               <button
                 onClick={async () => {
                   try {
-                    const response = await fetch('/api/save-auto-confirmation-settings', {
-                      method: 'POST',
-                      headers: {
-                        'Content-Type': 'application/json',
-                      },
-                      body: JSON.stringify({
-                        autoConfirmOmakase: settings.autoConfirmOmakase,
-                        autoConfirmDining: settings.autoConfirmDining
+                    // Save both auto-confirmation and seat capacity settings
+                    const [autoConfirmResponse, capacityResponse] = await Promise.all([
+                      fetch('/api/save-auto-confirmation-settings', {
+                        method: 'POST',
+                        headers: {
+                          'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                          autoConfirmOmakase: settings.autoConfirmOmakase,
+                          autoConfirmDining: settings.autoConfirmDining
+                        })
+                      }),
+                      fetch('/api/save-seat-capacity-settings', {
+                        method: 'POST',
+                        headers: {
+                          'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                          omakaseCapacity: seatCapacity.omakaseCapacity,
+                          diningCapacity: seatCapacity.diningCapacity
+                        })
                       })
-                    })
+                    ])
 
-                    const data = await response.json()
+                    const autoConfirmData = await autoConfirmResponse.json()
+                    const capacityData = await capacityResponse.json()
 
-                    if (data.success) {
+                    if (autoConfirmData.success && capacityData.success) {
                       toast({
                         title: t.settingsSavedTitle,
-                        description: `${t.settingsSavedDesc}: ${t.omakaseReservations} ${settings.autoConfirmOmakase ? 'ON' : 'OFF'}, ${t.diningReservations} ${settings.autoConfirmDining ? 'ON' : 'OFF'}`,
+                        description: `Auto-confirmation & seat capacity saved! Omakase: ${seatCapacity.omakaseCapacity} seats, Dining: ${seatCapacity.diningCapacity} seats`,
                       })
                       setShowSettings(false)
                     } else {
                       toast({
                         title: t.settingsFailedTitle,
-                        description: data.error || 'Unknown error occurred',
+                        description: autoConfirmData.error || capacityData.error || 'Unknown error occurred',
                       })
                     }
                   } catch (error) {
@@ -2033,15 +2137,15 @@ export default function AdminDashboard() {
                     })
                   }
                 }}
-                disabled={!settingsLoaded}
+                disabled={!settingsLoaded || !capacityLoaded}
                 className={`group relative px-8 py-3 rounded-xl transition-all duration-300 font-semibold shadow-lg transform ${
-                  settingsLoaded 
+                  (settingsLoaded && capacityLoaded)
                     ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white hover:from-purple-700 hover:to-indigo-700 hover:shadow-xl hover:-translate-y-0.5' 
                     : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                 }`}
               >
-                <span>{settingsLoaded ? t.saveSettings : t.loading}</span>
-                {settingsLoaded && (
+                <span>{(settingsLoaded && capacityLoaded) ? t.saveSettings : t.loading}</span>
+                {(settingsLoaded && capacityLoaded) && (
                   <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                 )}
               </button>

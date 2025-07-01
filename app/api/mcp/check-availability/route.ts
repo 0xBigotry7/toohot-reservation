@@ -31,6 +31,24 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    // Get seat capacity settings from database
+    const { data: capacitySettings, error: capacityError } = await supabase
+      .from('admin_settings')
+      .select('setting_value')
+      .eq('setting_key', 'seat_capacity')
+      .single();
+
+    // Use dynamic capacity or fall back to defaults
+    let maxCapacity: number;
+    if (capacitySettings && !capacityError && capacitySettings.setting_value) {
+      maxCapacity = type === 'omakase' 
+        ? capacitySettings.setting_value.omakaseCapacity || 12
+        : capacitySettings.setting_value.diningCapacity || 40;
+    } else {
+      // Fall back to default values if no settings found
+      maxCapacity = type === 'omakase' ? 12 : 40;
+    }
+
     // Determine table to check based on reservation type
     const tableName = type === 'omakase' ? 'omakase_reservations' : 'dining_reservations';
     
@@ -46,9 +64,6 @@ export async function POST(request: NextRequest) {
       console.error('Database error:', error);
       return NextResponse.json({ error: 'Database error' }, { status: 500 });
     }
-
-    // Simple capacity check (can be enhanced with actual table management)
-    const maxCapacity = type === 'omakase' ? 12 : 40; // Omakase: 12 seats, Dining: 40 seats
     const currentCapacity = existingReservations?.reduce((sum, r) => sum + r.party_size, 0) || 0;
     const availableCapacity = maxCapacity - currentCapacity;
     
