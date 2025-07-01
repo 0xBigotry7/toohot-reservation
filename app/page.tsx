@@ -1252,7 +1252,169 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            {selectedDate ? (
+            {searchTerm.trim() ? (
+              <>
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
+                  <h3 className="text-xl font-playfair text-copper mb-4 md:mb-0">
+                    Search Results ({searchResults.length} found)
+                  </h3>
+                </div>
+
+                {/* Search Results List */}
+                <div className="space-y-4">
+                  {searchResults.map((reservation) => (
+                    <div 
+                      key={reservation.id} 
+                      className="group relative p-4 rounded-xl bg-white/20 backdrop-blur-sm hover:bg-white/30 transition-all duration-300 ease-out border border-white/10 cursor-pointer shadow-lg hover:shadow-xl"
+                      onClick={() => setExpandedCard(expandedCard === reservation.id ? null : reservation.id)}
+                    >
+                      {/* Compact View - Always Visible */}
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-4 mb-2">
+                            <div className="font-playfair text-lg text-ink-black font-semibold">{reservation.customer_name}</div>
+                            <div className={`px-2 py-1 rounded-full text-xs font-semibold flex items-center gap-1 ${
+                              reservation.type === 'omakase' 
+                                ? 'bg-purple-100 text-purple-800' 
+                                : 'bg-blue-100 text-blue-800'
+                            }`}>
+                              <span>{reservation.type === 'omakase' ? '🍣' : '🍽️'}</span>
+                              <span>{reservation.type === 'omakase' ? 'Omakase' : 'Dining'}</span>
+                            </div>
+                            <div className="text-copper text-sm font-semibold">
+                              📅 {format(new Date(reservation.reservation_date), 'MMM d')}
+                            </div>
+                            <div className="text-charcoal text-sm">
+                              👥 <span className="font-semibold">{reservation.party_size}</span>
+                            </div>
+                            {reservation.special_requests && (
+                              <div className="bg-amber-100 text-amber-800 px-2 py-1 rounded-full text-xs font-semibold flex items-center gap-1">
+                                <span>⚠️</span>
+                                <span>Special Request</span>
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <span className={`px-2 py-1 rounded-full text-xs font-semibold ${RESERVATION_STATUSES.find(s => s.value === reservation.status)?.color || 'bg-gray-100 text-gray-800'}`}>
+                              {getStatusLabel(reservation.status)}
+                            </span>
+                            <span className="text-copper font-mono text-lg font-bold">{reservation.reservation_time}</span>
+                          </div>
+                        </div>
+
+                        {/* Action Buttons - Always Visible */}
+                        <div className="flex flex-wrap gap-2 ml-4">
+                          {reservation.status === 'pending' && (
+                            <button
+                              className="group relative bg-gradient-to-r from-emerald-600 to-green-600 text-white px-4 py-2 rounded-xl hover:from-emerald-700 hover:to-green-700 transition-all duration-300 font-semibold text-sm shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center gap-1"
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                await handleStatusChange(reservation.id, 'confirmed');
+                              }}
+                            >
+                              <span className="text-sm">✓</span>
+                              <span>Confirm</span>
+                              <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                            </button>
+                          )}
+
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleEditReservation(reservation);
+                            }}
+                            className="group relative liquid-glass bg-gradient-to-r from-copper/80 to-amber-600/80 text-white px-4 py-2 rounded-xl hover:from-copper hover:to-amber-700 transition-all duration-300 font-semibold text-sm shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center gap-1 backdrop-blur-sm border border-white/20"
+                          >
+                            <span className="text-sm">✏️</span>
+                            <span>Edit</span>
+                            <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-sand-beige/20 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                          </button>
+
+                          {reservation.status !== 'cancelled' && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const reason = window.prompt(
+                                  'Please provide a reason for cancellation:\n\nCommon reasons:\n• ' + CANCELLATION_REASONS.join('\n• '),
+                                  CANCELLATION_REASONS[0]
+                                )
+                                if (reason && reason.trim()) {
+                                  handleCancelReservation(reservation.id, reason.trim())
+                                }
+                              }}
+                              className="group relative liquid-glass bg-gradient-to-r from-red-400/80 to-rose-500/80 text-white px-4 py-2 rounded-xl hover:from-red-500 hover:to-rose-600 transition-all duration-300 font-semibold text-sm shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center gap-1 backdrop-blur-sm border border-white/20"
+                            >
+                              <span className="text-sm">✕</span>
+                              <span>Cancel</span>
+                              <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-sand-beige/20 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                            </button>
+                          )}
+
+                          {/* Status Change Dropdown */}
+                          <select
+                            value={reservation.status}
+                            onChange={(e) => {
+                              e.stopPropagation();
+                              handleStatusChange(reservation.id, e.target.value);
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="px-3 py-2 border-2 border-copper/30 rounded-xl text-xs focus:ring-2 focus:ring-copper/50 focus:border-copper transition-all duration-300 liquid-glass bg-sand-beige/60 backdrop-blur-sm shadow-lg hover:shadow-xl font-semibold transform hover:-translate-y-0.5 text-ink-black hover:bg-sand-beige/80"
+                          >
+                            {RESERVATION_STATUSES.map(status => (
+                              <option key={status.value} value={status.value}>{t[status.labelKey as keyof typeof t]}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* Expanded Details - Show on Hover/Click */}
+                      {expandedCard === reservation.id && (
+                        <div className="mt-4 pt-4 border-t border-copper/20 animate-in slide-in-from-top-2 duration-200">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-charcoal">
+                            <div>
+                              <span className="font-semibold text-copper">{t.email}:</span> {reservation.customer_email}
+                            </div>
+                            <div>
+                              <span className="font-semibold text-copper">{t.phone}:</span> {reservation.customer_phone}
+                            </div>
+                            <div>
+                              <span className="font-semibold text-copper">{t.confirmation}:</span> <span className="font-mono">{reservation.confirmation_code}</span>
+                            </div>
+                            <div>
+                              <span className="font-semibold text-copper">{t.revenue}:</span> ${reservation.party_size * (reservation.type === 'omakase' ? 99 : 40)}
+                            </div>
+                            <div>
+                              <span className="font-semibold text-copper">{t.created}:</span> {format(new Date(reservation.created_at), 'MMM d, yyyy')}
+                            </div>
+                          </div>
+
+                          {reservation.special_requests && (
+                            <div className="mt-3 p-3 bg-white/30 rounded-lg">
+                              <span className="font-semibold text-copper">{t.specialRequests}:</span>
+                              <p className="mt-1 text-charcoal">{reservation.special_requests}</p>
+                            </div>
+                          )}
+
+                          {reservation.notes && (
+                            <div className="mt-3 p-3 bg-white/30 rounded-lg">
+                              <span className="font-semibold text-copper">{t.internalNotes}:</span>
+                              <p className="mt-1 text-charcoal">{reservation.notes}</p>
+                            </div>
+                          )}
+
+                          {reservation.cancellation_reason && (
+                            <div className="mt-3 p-3 bg-red-50 rounded-lg border border-red-200">
+                              <span className="font-semibold text-red-600">{t.cancellationReason}:</span>
+                              <p className="mt-1 text-red-600">{reservation.cancellation_reason}</p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : selectedDate ? (
               <>
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
                   <h3 className="text-xl font-playfair text-copper mb-4 md:mb-0">
@@ -1426,164 +1588,7 @@ export default function AdminDashboard() {
               </div>
             )}
 
-            {/* Global Search Results */}
-            {searchTerm && !selectedDate && (
-              <div className="mt-6 space-y-4">
-                <h3 className="text-lg font-medium text-charcoal mb-4">{t.searchResults}</h3>
-                {searchAllReservations().map((reservation) => (
-                  <div 
-                    key={reservation.id} 
-                    className="group relative p-4 rounded-xl bg-sand-beige/40 hover:bg-sand-beige/60 transition-all duration-300 ease-out border border-white/20 cursor-pointer"
-                    onClick={() => setExpandedCard(expandedCard === reservation.id ? null : reservation.id)}
-                  >
-                                            {/* Compact View - Always Visible */}
-                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mb-2">
-                              <div className="font-playfair text-lg text-ink-black font-semibold truncate">{reservation.customer_name}</div>
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <div className={`px-2 py-1 rounded-full text-xs font-semibold flex items-center gap-1 ${
-                                  reservation.type === 'omakase' 
-                                    ? 'bg-purple-100 text-purple-800' 
-                                    : 'bg-blue-100 text-blue-800'
-                                }`}>
-                                  <span>{reservation.type === 'omakase' ? '🍣' : '🍽️'}</span>
-                                  <span>{reservation.type === 'omakase' ? t.omakaseType : t.diningType}</span>
-                                </div>
-                                <div className="text-copper text-sm font-semibold">
-                                  📅 {format(new Date(reservation.reservation_date), 'MMM d')}
-                                </div>
-                                <div className="text-charcoal text-sm">
-                                  👥 <span className="font-semibold">{reservation.party_size}</span>
-                                </div>
-                                {reservation.special_requests && (
-                                  <div className="bg-amber-100 text-amber-800 px-2 py-1 rounded-full text-xs font-semibold flex items-center gap-1">
-                                    <span>⚠️</span>
-                                    <span className="hidden sm:inline">{t.specialRequest}</span>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-3 flex-wrap">
-                              <span className={`px-2 py-1 rounded-full text-xs font-semibold ${RESERVATION_STATUSES.find(s => s.value === reservation.status)?.color || 'bg-gray-100 text-gray-800'}`}>
-                                {getStatusLabel(reservation.status)}
-                              </span>
-                              <span className="text-copper font-mono text-lg font-bold">{reservation.reservation_time}</span>
-                            </div>
-                          </div>
 
-                          {/* Action Buttons - Always Visible */}
-                          <div className="flex flex-wrap gap-2 justify-end sm:justify-start sm:ml-4">
-                        {reservation.status === 'pending' && (
-                                                      <button
-                              className="group relative bg-gradient-to-r from-emerald-600 to-green-600 text-white px-2 sm:px-4 py-1 sm:py-2 rounded-lg sm:rounded-xl hover:from-emerald-700 hover:to-green-700 transition-all duration-300 font-semibold text-xs sm:text-sm shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center gap-1"
-                              onClick={async (e) => {
-                                e.stopPropagation();
-                                await handleStatusChange(reservation.id, 'confirmed');
-                              }}
-                            >
-                              <span className="text-xs sm:text-sm">✓</span>
-                              <span className="hidden sm:inline">{t.confirm}</span>
-                              <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent rounded-lg sm:rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                            </button>
-                          )}
-
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleEditReservation(reservation);
-                            }}
-                            className="group relative liquid-glass bg-gradient-to-r from-copper/80 to-amber-600/80 text-white px-2 sm:px-4 py-1 sm:py-2 rounded-lg sm:rounded-xl hover:from-copper hover:to-amber-700 transition-all duration-300 font-semibold text-xs sm:text-sm shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center gap-1 backdrop-blur-sm border border-white/20"
-                          >
-                            <span className="text-xs sm:text-sm">✏️</span>
-                            <span className="hidden sm:inline">{t.edit}</span>
-                            <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-sand-beige/20 rounded-lg sm:rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                          </button>
-
-                          {reservation.status !== 'cancelled' && (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                const reason = window.prompt(
-                                  'Please provide a reason for cancellation:\n\nCommon reasons:\n• ' + CANCELLATION_REASONS.join('\n• '),
-                                  CANCELLATION_REASONS[0]
-                                )
-                                if (reason && reason.trim()) {
-                                  handleCancelReservation(reservation.id, reason.trim())
-                                }
-                              }}
-                              className="group relative liquid-glass bg-gradient-to-r from-red-400/80 to-rose-500/80 text-white px-2 sm:px-4 py-1 sm:py-2 rounded-lg sm:rounded-xl hover:from-red-500 hover:to-rose-600 transition-all duration-300 font-semibold text-xs sm:text-sm shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center gap-1 backdrop-blur-sm border border-white/20"
-                            >
-                              <span className="text-xs sm:text-sm">✕</span>
-                              <span className="hidden sm:inline">{t.cancelAction}</span>
-                              <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-sand-beige/20 rounded-lg sm:rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                            </button>
-                          )}
-
-                          {/* Status Change Dropdown */}
-                          <select
-                            value={reservation.status}
-                            onChange={(e) => {
-                              e.stopPropagation();
-                              handleStatusChange(reservation.id, e.target.value);
-                            }}
-                            onClick={(e) => e.stopPropagation()}
-                            className="px-2 sm:px-3 py-1 sm:py-2 border-2 border-copper/30 rounded-lg sm:rounded-xl text-xs focus:ring-2 focus:ring-copper/50 focus:border-copper transition-all duration-300 liquid-glass bg-sand-beige/60 backdrop-blur-sm shadow-lg hover:shadow-xl font-semibold transform hover:-translate-y-0.5 text-ink-black hover:bg-sand-beige/80 min-w-0"
-                          >
-                          {RESERVATION_STATUSES.map(status => (
-                            <option key={status.value} value={status.value}>{t[status.labelKey as keyof typeof t]}</option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-
-                    {/* Expanded Details - Show on Hover/Click */}
-                    {expandedCard === reservation.id && (
-                      <div className="mt-4 pt-4 border-t border-copper/20 animate-in slide-in-from-top-2 duration-200">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-charcoal">
-                          <div>
-                            <span className="font-semibold text-copper">{t.email}:</span> {reservation.customer_email}
-                          </div>
-                          <div>
-                            <span className="font-semibold text-copper">{t.phone}:</span> {reservation.customer_phone}
-                          </div>
-                          <div>
-                            <span className="font-semibold text-copper">{t.confirmation}:</span> <span className="font-mono">{reservation.confirmation_code}</span>
-                          </div>
-                          <div>
-                            <span className="font-semibold text-copper">{t.revenue}:</span> ${reservation.party_size * (reservation.type === 'omakase' ? 99 : 40)}
-                          </div>
-                          <div>
-                            <span className="font-semibold text-copper">{t.created}:</span> {format(new Date(reservation.created_at), 'MMM d, yyyy')}
-                          </div>
-                        </div>
-
-                        {reservation.special_requests && (
-                          <div className="mt-3 p-3 bg-white/30 rounded-lg">
-                            <span className="font-semibold text-copper">{t.specialRequests}:</span>
-                            <p className="mt-1 text-charcoal">{reservation.special_requests}</p>
-                          </div>
-                        )}
-
-                        {reservation.notes && (
-                          <div className="mt-3 p-3 bg-white/30 rounded-lg">
-                            <span className="font-semibold text-copper">{t.internalNotes}:</span>
-                            <p className="mt-1 text-charcoal">{reservation.notes}</p>
-                          </div>
-                        )}
-
-                        {reservation.cancellation_reason && (
-                          <div className="mt-3 p-3 bg-red-50 rounded-lg border border-red-200">
-                            <span className="font-semibold text-red-600">{t.cancellationReason}:</span>
-                            <p className="mt-1 text-red-600">{reservation.cancellation_reason}</p>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
         </div>
 
