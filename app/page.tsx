@@ -892,15 +892,27 @@ export default function AdminDashboard() {
         setClosedDates(data.closedDates || [])
         setClosedWeekdays(data.closedWeekdays || [])
         
-        // Load saved holiday states or initialize with defaults
+        // Handle holidays more robustly
         const savedHolidays = data.holidays || []
         const currentYear = new Date().getFullYear()
+        const today = new Date()
+        today.setHours(0, 0, 0, 0)
+        
+        // Filter saved holidays to only include future dates from current year
+        const currentYearSavedHolidays = savedHolidays.filter((h: any) => {
+          const holidayDate = new Date(h.date)
+          return holidayDate >= today && holidayDate.getFullYear() === currentYear
+        })
+        
+        // Generate fresh holidays for current year
         const defaultHolidays = generateHolidays(currentYear)
         
-        // Merge saved states with current year holidays
-        const mergedHolidays = defaultHolidays.map(holiday => {
-          const saved = savedHolidays.find((h: any) => h.date === holiday.date)
-          return saved || holiday
+        // Smart merge: prefer saved holiday state if the holiday name matches (more robust than date matching)
+        const mergedHolidays = defaultHolidays.map(defaultHoliday => {
+          const saved = currentYearSavedHolidays.find((h: any) => 
+            h.name === defaultHoliday.name || h.date === defaultHoliday.date
+          )
+          return saved || defaultHoliday
         })
         
         setHolidays(mergedHolidays)
@@ -965,16 +977,70 @@ export default function AdminDashboard() {
     setClosedDates(updatedDates)
     setNewClosedDate('')
     
-    // Auto-save
-    await saveClosedDatesSettings()
+    // Auto-save with updated data
+    try {
+      const response = await fetch('/api/save-closed-dates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          closedDates: updatedDates,  // Use updated dates
+          closedWeekdays,
+          holidays 
+        })
+      })
+      
+      const data = await response.json()
+      
+      if (data.success) {
+        toast({
+          title: "Date Closed! 🚫",
+          description: "Date added to closed list",
+        })
+      } else {
+        throw new Error(data.error)
+      }
+    } catch (error) {
+      console.error('Failed to save closed date:', error)
+      toast({
+        title: "Error",
+        description: "Failed to save closed date. Please try again.",
+      })
+    }
   }
 
   const removeClosedDate = async (dateToRemove: string) => {
     const updatedDates = closedDates.filter(date => date !== dateToRemove)
     setClosedDates(updatedDates)
     
-    // Auto-save
-    await saveClosedDatesSettings()
+    // Auto-save with updated data
+    try {
+      const response = await fetch('/api/save-closed-dates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          closedDates: updatedDates,  // Use updated dates
+          closedWeekdays,
+          holidays 
+        })
+      })
+      
+      const data = await response.json()
+      
+      if (data.success) {
+        toast({
+          title: "Date Reopened! ✅",
+          description: "Date removed from closed list",
+        })
+      } else {
+        throw new Error(data.error)
+      }
+    } catch (error) {
+      console.error('Failed to save closed date removal:', error)
+      toast({
+        title: "Error",
+        description: "Failed to remove closed date. Please try again.",
+      })
+    }
   }
 
   const toggleWeekday = async (dayIndex: number) => {
@@ -984,8 +1050,38 @@ export default function AdminDashboard() {
     
     setClosedWeekdays(updatedWeekdays)
     
-    // Auto-save
-    await saveClosedDatesSettings()
+    // Auto-save with updated data
+    try {
+      const response = await fetch('/api/save-closed-dates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          closedDates,
+          closedWeekdays: updatedWeekdays,  // Use updated weekdays
+          holidays 
+        })
+      })
+      
+      const data = await response.json()
+      
+      if (data.success) {
+        const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+        const dayName = dayNames[dayIndex]
+        const isNowClosed = updatedWeekdays.includes(dayIndex)
+        toast({
+          title: `${dayName} ${isNowClosed ? 'Closed' : 'Opened'}! 📅`,
+          description: `${dayName}s are now ${isNowClosed ? 'closed' : 'open'} for reservations`,
+        })
+      } else {
+        throw new Error(data.error)
+      }
+    } catch (error) {
+      console.error('Failed to save weekday toggle:', error)
+      toast({
+        title: "Error",
+        description: "Failed to save weekday setting. Please try again.",
+      })
+    }
   }
 
   const toggleHoliday = async (holidayDate: string) => {
@@ -994,8 +1090,35 @@ export default function AdminDashboard() {
     )
     setHolidays(updatedHolidays)
     
-    // Auto-save
-    await saveClosedDatesSettings()
+    // Auto-save with updated holidays data
+    try {
+      const response = await fetch('/api/save-closed-dates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          closedDates,
+          closedWeekdays,
+          holidays: updatedHolidays  // Use the updated holidays directly
+        })
+      })
+      
+      const data = await response.json()
+      
+      if (data.success) {
+        toast({
+          title: "Holiday Updated! 🎉",
+          description: "Holiday setting saved successfully",
+        })
+      } else {
+        throw new Error(data.error)
+      }
+    } catch (error) {
+      console.error('Failed to save holiday setting:', error)
+      toast({
+        title: "Error",
+        description: "Failed to save holiday setting. Please try again.",
+      })
+    }
   }
 
   const toggleAllHolidays = async () => {
@@ -1003,8 +1126,35 @@ export default function AdminDashboard() {
     const updatedHolidays = holidays.map(h => ({ ...h, closed: !allClosed }))
     setHolidays(updatedHolidays)
     
-    // Auto-save
-    await saveClosedDatesSettings()
+    // Auto-save with updated holidays data
+    try {
+      const response = await fetch('/api/save-closed-dates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          closedDates,
+          closedWeekdays,
+          holidays: updatedHolidays  // Use the updated holidays directly
+        })
+      })
+      
+      const data = await response.json()
+      
+      if (data.success) {
+        toast({
+          title: "All Holidays Updated! 🎉",
+          description: `All holidays ${allClosed ? 'opened' : 'closed'} successfully`,
+        })
+      } else {
+        throw new Error(data.error)
+      }
+    } catch (error) {
+      console.error('Failed to save all holidays setting:', error)
+      toast({
+        title: "Error",
+        description: "Failed to save holiday settings. Please try again.",
+      })
+    }
   }
 
   const toggleOmakaseDay = (dayIndex: number) => {
