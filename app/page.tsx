@@ -508,8 +508,8 @@ export default function AdminDashboard() {
       
       if (data.success && data.settings) {
         setSeatCapacity({
-          omakaseCapacity: data.settings.omakaseCapacity,
-          diningCapacity: data.settings.diningCapacity
+          omakaseCapacity: data.settings.omakaseSeats,
+          diningCapacity: data.settings.diningSeats
         })
       }
       setCapacityLoaded(true)
@@ -684,6 +684,39 @@ export default function AdminDashboard() {
 
       return matchesSearch && matchesStatus;
     });
+  }
+
+  // Calculate capacity utilization for a specific date
+  const calculateCapacityForDate = (reservationsForDay: Reservation[]) => {
+    if (!reservationsForDay || reservationsForDay.length === 0) {
+      return { percentage: 0, omakaseUsed: 0, diningUsed: 0, totalUsed: 0, totalCapacity: seatCapacity.omakaseCapacity + seatCapacity.diningCapacity }
+    }
+
+    // Filter out cancelled reservations
+    const activeReservations = reservationsForDay.filter(r => r.status !== 'cancelled')
+    
+    // Calculate used seats by type
+    const omakaseUsed = activeReservations
+      .filter(r => r.type === 'omakase')
+      .reduce((sum, r) => sum + r.party_size, 0)
+    
+    const diningUsed = activeReservations
+      .filter(r => r.type === 'dining')
+      .reduce((sum, r) => sum + r.party_size, 0)
+
+    const totalUsed = omakaseUsed + diningUsed
+    const totalCapacity = seatCapacity.omakaseCapacity + seatCapacity.diningCapacity
+    const percentage = totalCapacity > 0 ? (totalUsed / totalCapacity) * 100 : 0
+
+    return {
+      percentage: Math.min(percentage, 100), // Cap at 100%
+      omakaseUsed,
+      diningUsed,
+      totalUsed,
+      totalCapacity,
+      omakaseCapacity: seatCapacity.omakaseCapacity,
+      diningCapacity: seatCapacity.diningCapacity
+    }
   }
 
   // Global search across all reservations
@@ -1125,22 +1158,48 @@ export default function AdminDashboard() {
                   const reservationsForDay = calendarReservations[key] || [];
                   const hasConfirmed = reservationsForDay.some(r => r.status === 'confirmed' || r.status === 'seated' || r.status === 'completed');
                   const hasPending = reservationsForDay.some(r => r.status === 'pending');
+                  const capacity = calculateCapacityForDate(reservationsForDay);
                   
                   return (
                     <button
                       key={key}
-                      className={`relative flex flex-col items-center justify-center p-2 sm:p-3 rounded-xl border transition-all text-xs sm:text-sm hover:bg-sand-beige/40 cursor-pointer min-h-[60px] sm:min-h-[80px]
+                      className={`relative flex flex-col items-center justify-center p-2 sm:p-3 rounded-xl border transition-all text-xs sm:text-sm hover:bg-sand-beige/40 cursor-pointer min-h-[60px] sm:min-h-[80px] overflow-hidden
                         ${isToday(day) ? 'border-copper bg-sand-beige/60 shadow' : 'border-transparent bg-white/40'}
                         ${selectedDate && isSameDay(day, selectedDate) ? 'ring-2 ring-copper' : ''}
                       `}
                       onClick={() => setSelectedDate(day)}
+                      title={`${capacity.totalUsed}/${capacity.totalCapacity} seats (${capacity.percentage.toFixed(0)}% full)`}
                     >
-                      <span className="font-playfair text-lg font-semibold">{format(day, 'd')}</span>
-                      <div className="flex items-center gap-1 mt-1">
-                        <span className="text-xs text-copper">{reservationsForDay.length}</span>
-                        <div className="flex items-center gap-0.5">
-                          {hasPending && <div className="w-2 h-2 bg-red-500 rounded-full"></div>}
-                          {hasConfirmed && <div className="w-2 h-2 bg-green-500 rounded-full"></div>}
+                      {/* Water Fill Background using theme copper colors */}
+                      <div 
+                        className="absolute inset-0 bg-gradient-to-t from-copper/40 via-copper/30 to-copper/10 transition-all duration-700 ease-out rounded-xl"
+                        style={{
+                          transform: `translateY(${100 - capacity.percentage}%)`,
+                          opacity: capacity.percentage > 0 ? 0.8 : 0
+                        }}
+                      />
+                      
+                      {/* Enhanced fill for high capacity */}
+                      {capacity.percentage > 80 && (
+                        <div className="absolute inset-0 bg-gradient-to-t from-amber-600/50 via-amber-500/40 to-amber-400/20 animate-pulse rounded-xl" />
+                      )}
+                      
+                      {/* Over capacity warning */}
+                      {capacity.percentage >= 100 && (
+                        <div className="absolute inset-0 bg-gradient-to-t from-red-500/60 via-red-400/50 to-red-300/30 animate-pulse rounded-xl" />
+                      )}
+                      
+                      {/* Content - positioned above the water fill */}
+                      <div className="relative z-10 flex flex-col items-center justify-center">
+                        <span className="font-playfair text-lg font-semibold text-ink-black">{format(day, 'd')}</span>
+                        
+                        {/* Simple capacity info */}
+                        <div className="flex items-center gap-1 mt-1">
+                          <span className="text-xs text-copper font-medium">{reservationsForDay.length}</span>
+                          <div className="flex items-center gap-0.5">
+                            {hasPending && <div className="w-2 h-2 bg-red-500 rounded-full"></div>}
+                            {hasConfirmed && <div className="w-2 h-2 bg-green-500 rounded-full"></div>}
+                          </div>
                         </div>
                       </div>
                     </button>
@@ -2108,8 +2167,8 @@ export default function AdminDashboard() {
                           'Content-Type': 'application/json',
                         },
                         body: JSON.stringify({
-                          omakaseCapacity: seatCapacity.omakaseCapacity,
-                          diningCapacity: seatCapacity.diningCapacity
+                          omakaseSeats: seatCapacity.omakaseCapacity,
+                          diningSeats: seatCapacity.diningCapacity
                         })
                       })
                     ])

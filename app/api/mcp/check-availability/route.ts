@@ -1,114 +1,116 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { format } from 'date-fns';
+import { getSeatCapacitySettings } from '@/lib/server-utils';
 
-const supabase = createClient(
+const supabaseAdmin = createClient(
   process.env.SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
 export async function POST(request: NextRequest) {
   try {
-    const { date, time, party_size, type = 'omakase' } = await request.json();
-    
+    const body = await request.json();
+    const { date, type, partySize } = body;
+
     // Validate required fields
-    if (!date || !time || !party_size) {
-      return NextResponse.json({ 
-        error: 'Missing required fields: date, time, party_size' 
+    if (!date || !type || !partySize) {
+      return NextResponse.json({
+        success: false,
+        error: 'Missing required fields: date, type, and partySize are required'
       }, { status: 400 });
     }
 
-    // Validate date format
-    const reservationDate = format(new Date(date), 'yyyy-MM-dd');
-    
-    // Check if date is in the past
-    const today = format(new Date(), 'yyyy-MM-dd');
-    if (reservationDate < today) {
+    // Validate reservation type
+    if (type !== 'omakase' && type !== 'dining') {
       return NextResponse.json({
+        success: false,
+        error: 'Invalid reservation type. Must be "omakase" or "dining"'
+      }, { status: 400 });
+    }
+
+    // Validate party size
+    if (typeof partySize !== 'number' || partySize < 1 || partySize > 20) {
+      return NextResponse.json({
+        success: false,
+        error: 'Invalid party size. Must be a number between 1 and 20'
+      }, { status: 400 });
+    }
+
+    // Validate date format and ensure it's today or future
+    const requestedDate = new Date(date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    if (isNaN(requestedDate.getTime())) {
+      return NextResponse.json({
+        success: false,
+        error: 'Invalid date format. Please use ISO date format (YYYY-MM-DD)'
+      }, { status: 400 });
+    }
+
+    if (requestedDate < today) {
+      return NextResponse.json({
+        success: false,
         available: false,
-        reason: 'Cannot make reservations for past dates',
-        alternative_dates: []
+        reason: 'Cannot make reservations for past dates'
       });
     }
 
     // Get seat capacity settings from database
-    const { data: capacitySettings, error: capacityError } = await supabase
-      .from('admin_settings')
-      .select('setting_value')
-      .eq('setting_key', 'seat_capacity')
-      .single();
-
-    // Use dynamic capacity or fall back to defaults
-    let maxCapacity: number;
-    if (capacitySettings && !capacityError && capacitySettings.setting_value) {
-      maxCapacity = type === 'omakase' 
-        ? capacitySettings.setting_value.omakaseCapacity || 12
-        : capacitySettings.setting_value.diningCapacity || 40;
-    } else {
-      // Fall back to default values if no settings found
-      maxCapacity = type === 'omakase' ? 12 : 40;
-    }
-
-    // Determine table to check based on reservation type
-    const tableName = type === 'omakase' ? 'omakase_reservations' : 'dining_reservations';
+    const capacitySettings = await getSeatCapacitySettings();
     
-    // Check existing reservations for this date/time
-    const { data: existingReservations, error } = await supabase
+    // Determine table capacity based on reservation type
+    const tableCapacity = type === 'omakase' ? capacitySettings.omakaseSeats : capacitySettings.diningSeats;
+    const tableName = type === 'omakase' ? 'omakase_reservations' : 'dining_reservations';
+
+    console.log(`Checking availability for ${type} on ${date} for ${partySize} people`);
+    console.log(`Table capacity: ${tableCapacity} (source: ${capacitySettings.source})`);
+
+    // Check existing reservations for the date (excluding cancelled ones)
+    const { data: existingReservations, error } = await supabaseAdmin
       .from(tableName)
-      .select('party_size, status')
-      .eq('reservation_date', reservationDate)
-      .eq('reservation_time', time)
-      .in('status', ['pending', 'confirmed', 'seated']);
+      .select('party_size')
+      .eq('reservation_date', date)
+      .neq('status', 'cancelled');
 
     if (error) {
-      console.error('Database error:', error);
-      return NextResponse.json({ error: 'Database error' }, { status: 500 });
-    }
-    const currentCapacity = existingReservations?.reduce((sum, r) => sum + r.party_size, 0) || 0;
-    const availableCapacity = maxCapacity - currentCapacity;
-    
-    const isAvailable = availableCapacity >= party_size;
-    
-    // Get alternative times if current time is not available
-    const alternativeTimes = [];
-    if (!isAvailable) {
-      const timeSlots = ['17:00', '19:00']; // Standard time slots
-      for (const slot of timeSlots) {
-        if (slot !== time) {
-          const { data: slotReservations } = await supabase
-            .from(tableName)
-            .select('party_size')
-            .eq('reservation_date', reservationDate)
-            .eq('reservation_time', slot)
-            .in('status', ['pending', 'confirmed', 'seated']);
-          
-          const slotCapacity = slotReservations?.reduce((sum, r) => sum + r.party_size, 0) || 0;
-          if (maxCapacity - slotCapacity >= party_size) {
-            alternativeTimes.push(slot);
-          }
-        }
-      }
+      console.error('Error checking existing reservations:', error);
+      return NextResponse.json({
+        success: false,
+        error: 'Failed to check availability'
+      }, { status: 500 });
     }
 
+    // Calculate total reserved seats
+    const totalReservedSeats = existingReservations.reduce((sum, reservation) => {
+      return sum + (reservation.party_size || 0);
+    }, 0);
+
+    const availableSeats = tableCapacity - totalReservedSeats;
+    const isAvailable = availableSeats >= partySize;
+
+    console.log(`Availability check: ${totalReservedSeats}/${tableCapacity} seats taken, ${availableSeats} available`);
+
     return NextResponse.json({
+      success: true,
       available: isAvailable,
-      date: reservationDate,
-      time,
-      party_size,
-      type,
-      capacity_info: {
-        requested: party_size,
-        available: availableCapacity,
-        total: maxCapacity
+      details: {
+        requestedDate: date,
+        reservationType: type,
+        partySize,
+        totalCapacity: tableCapacity,
+        reservedSeats: totalReservedSeats,
+        availableSeats,
+        capacitySource: capacitySettings.source
       },
-      alternative_times: alternativeTimes,
-      message: isAvailable 
-        ? `Table available for ${party_size} guests` 
-        : `Not enough capacity. ${availableCapacity} seats available.`
+      reason: isAvailable ? 'Table available' : `Not enough seats available (${availableSeats} available, ${partySize} requested)`
     });
 
   } catch (error) {
-    console.error('Check availability error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    console.error('Error in availability check:', error);
+    return NextResponse.json({
+      success: false,
+      error: 'Internal server error'
+    }, { status: 500 });
   }
 } 

@@ -8,28 +8,14 @@ const supabaseAdmin = createClient(
 
 export async function POST(request: NextRequest) {
   try {
-    const { omakaseCapacity, diningCapacity } = await request.json()
+    const { omakaseSeats, diningSeats } = await request.json()
 
     // Validate input
-    if (typeof omakaseCapacity !== 'number' || typeof diningCapacity !== 'number') {
+    if (typeof omakaseSeats !== 'number' || typeof diningSeats !== 'number' || 
+        omakaseSeats < 0 || diningSeats < 0 || 
+        omakaseSeats > 100 || diningSeats > 100) {
       return NextResponse.json(
-        { success: false, error: 'Invalid settings format - capacity values must be numbers' },
-        { status: 400 }
-      )
-    }
-
-    // Validate capacity values are positive
-    if (omakaseCapacity < 1 || diningCapacity < 1) {
-      return NextResponse.json(
-        { success: false, error: 'Capacity values must be at least 1' },
-        { status: 400 }
-      )
-    }
-
-    // Validate capacity values are reasonable (max 200 seats)
-    if (omakaseCapacity > 200 || diningCapacity > 200) {
-      return NextResponse.json(
-        { success: false, error: 'Capacity values cannot exceed 200 seats' },
+        { success: false, error: 'Invalid seat capacity values. Must be numbers between 0 and 100.' },
         { status: 400 }
       )
     }
@@ -41,8 +27,8 @@ export async function POST(request: NextRequest) {
       .upsert({
         setting_key: 'seat_capacity',
         setting_value: {
-          omakaseCapacity,
-          diningCapacity
+          omakaseSeats,
+          diningSeats
         },
         updated_at: new Date().toISOString()
       }, {
@@ -57,14 +43,14 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    console.log('Seat capacity settings saved successfully:', { omakaseCapacity, diningCapacity })
+    console.log('Seat capacity settings saved successfully:', { omakaseSeats, diningSeats })
 
     return NextResponse.json({
       success: true,
-      message: 'Seat capacity settings saved successfully',
+      message: 'Settings saved successfully',
       settings: {
-        omakaseCapacity,
-        diningCapacity
+        omakaseSeats,
+        diningSeats
       }
     })
   } catch (error) {

@@ -72,19 +72,18 @@ export async function POST(request: NextRequest) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         date: formattedDate,
-        time: reservation_time,
-        party_size,
-        type
+        type,
+        partySize: party_size
       })
     });
 
     const availabilityData = await availabilityResponse.json();
     
-    if (!availabilityData.available) {
+    if (!availabilityData.success || !availabilityData.available) {
       return NextResponse.json({
-        error: 'Time slot not available',
-        availability_info: availabilityData,
-        suggested_alternatives: availabilityData.alternative_times
+        error: availabilityData.reason || 'Date not available',
+        availability_info: availabilityData.details || availabilityData,
+        message: `Cannot create reservation: ${availabilityData.reason || 'insufficient capacity'}`
       }, { status: 409 });
     }
 
