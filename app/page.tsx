@@ -995,60 +995,60 @@ export default function AdminDashboard() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-sand-beige to-white flex flex-col">
       {/* Header */}
-      <header className="liquid-glass shadow py-6 px-8 flex items-center justify-between">
-        <div className="flex items-center gap-4">
+      <header className="liquid-glass shadow py-4 sm:py-6 px-4 sm:px-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-0">
+        <div className="flex items-center gap-3 sm:gap-4">
           <div className="relative">
             <Image 
               src="/logo_transparent.png" 
               alt="TooHot Restaurant Logo" 
-              width={48}
-              height={48}
-              className="object-contain"
+              width={40}
+              height={40}
+              className="object-contain sm:w-12 sm:h-12"
               priority
             />
           </div>
           <div>
-            <h1 className="text-2xl font-playfair text-copper font-semibold">
+            <h1 className="text-xl sm:text-2xl font-playfair text-copper font-semibold">
               {t.toohotAdmin}
             </h1>
-            <p className="text-sm text-charcoal mt-1">{t.reservationManagementDashboard}</p>
+            <p className="text-xs sm:text-sm text-charcoal mt-1 hidden sm:block">{t.reservationManagementDashboard}</p>
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
           <button
             onClick={() => setShowNewReservationForm(true)}
-            className="group relative bg-gradient-to-r from-emerald-600 to-green-600 text-white px-6 py-3 rounded-xl hover:from-emerald-700 hover:to-green-700 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center gap-2"
+            className="group relative bg-gradient-to-r from-emerald-600 to-green-600 text-white px-3 sm:px-6 py-2 sm:py-3 rounded-xl hover:from-emerald-700 hover:to-green-700 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center gap-1 sm:gap-2 flex-1 sm:flex-none justify-center"
           >
             <span className="text-lg">+</span>
-            <span>{t.newReservation}</span>
+            <span className="text-sm sm:text-base">{t.newReservation}</span>
             <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
           </button>
           <button
             onClick={() => setShowSettings(true)}
-            className="group relative bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-6 py-3 rounded-xl hover:from-purple-700 hover:to-indigo-700 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center gap-2"
+            className="group relative bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-3 sm:px-6 py-2 sm:py-3 rounded-xl hover:from-purple-700 hover:to-indigo-700 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center gap-1 sm:gap-2"
           >
             <span className="text-lg">⚙️</span>
-            <span>{t.settings}</span>
+            <span className="hidden sm:inline text-sm sm:text-base">{t.settings}</span>
             <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
           </button>
           <button
             onClick={logout}
-            className="group relative bg-gradient-to-r from-copper to-amber-700 text-white px-6 py-3 rounded-xl hover:from-copper/90 hover:to-amber-800 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+            className="group relative bg-gradient-to-r from-copper to-amber-700 text-white px-3 sm:px-6 py-2 sm:py-3 rounded-xl hover:from-copper/90 hover:to-amber-800 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
           >
-            <span>{t.logout}</span>
+            <span className="text-sm sm:text-base">{t.logout}</span>
             <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
           </button>
         </div>
       </header>
 
-      <main className="flex-1 max-w-7xl mx-auto w-full py-8 px-4">
+      <main className="flex-1 w-full max-w-7xl mx-auto py-4 sm:py-8 px-4">
         {/* Calendar and Reservations Side by Side */}
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 mb-12">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-8 mb-8 sm:mb-12">
           
           {/* Calendar View - Left Side */}
-          <div className="xl:col-span-1">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-playfair text-copper">{t.daysOverview}</h2>
+          <div className="lg:col-span-1">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-6">
+              <h2 className="text-lg sm:text-xl font-playfair text-copper mb-2 sm:mb-0">{t.daysOverview}</h2>
               <div className="flex items-center gap-2 text-xs text-charcoal/60">
                 <div className="flex items-center gap-1">
                   <div className="w-2 h-2 bg-green-500 rounded-full"></div>
@@ -1060,7 +1060,7 @@ export default function AdminDashboard() {
                 </div>
               </div>
             </div>
-            <div className="liquid-glass rounded-2xl shadow-lg p-8 overflow-x-auto wabi-sabi-border backdrop-blur-xl border border-white/20">
+            <div className="liquid-glass rounded-2xl shadow-lg p-4 sm:p-8 overflow-x-auto wabi-sabi-border backdrop-blur-xl border border-white/20">
               {/* Calendar header: Mon-Sun */}
                               <div className="grid grid-cols-7 mb-3">
                   {[t.monday, t.tuesday, t.wednesday, t.thursday, t.friday, t.saturday, t.sunday].map((d) => (
@@ -1086,7 +1086,7 @@ export default function AdminDashboard() {
                   return (
                     <button
                       key={key}
-                      className={`relative flex flex-col items-center justify-center p-3 rounded-xl border transition-all text-sm hover:bg-sand-beige/40 cursor-pointer
+                      className={`relative flex flex-col items-center justify-center p-2 sm:p-3 rounded-xl border transition-all text-xs sm:text-sm hover:bg-sand-beige/40 cursor-pointer min-h-[60px] sm:min-h-[80px]
                         ${isToday(day) ? 'border-copper bg-sand-beige/60 shadow' : 'border-transparent bg-white/40'}
                         ${selectedDate && isSameDay(day, selectedDate) ? 'ring-2 ring-copper' : ''}
                       `}
@@ -1108,10 +1108,10 @@ export default function AdminDashboard() {
           </div>
 
           {/* Daily Reservations List - Right Side */}
-          <div className="xl:col-span-2">
+          <div className="lg:col-span-2">
             {/* Search and Filter Controls - Always visible */}
-            <div className="flex flex-col gap-4 mb-6">
-              <div className="flex flex-col md:flex-row gap-4">
+            <div className="flex flex-col gap-4 mb-4 sm:mb-6">
+              <div className="flex flex-col gap-4">
                 <div className="relative flex-1">
                   <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                     <span className="text-copper/60 text-lg">🔍</span>
@@ -1121,14 +1121,14 @@ export default function AdminDashboard() {
                     placeholder={t.searchAllReservations}
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-12 pr-4 py-3 w-full rounded-xl border border-white/20 bg-white/50 backdrop-blur-sm focus:ring-2 focus:ring-copper/20 focus:border-copper/20 transition-all duration-300 placeholder:text-charcoal/40"
+                    className="pl-12 pr-4 py-3 w-full rounded-xl border border-white/20 bg-white/50 backdrop-blur-sm focus:ring-2 focus:ring-copper/20 focus:border-copper/20 transition-all duration-300 placeholder:text-charcoal/40 text-sm sm:text-base"
                   />
                 </div>
-                <div className="flex flex-wrap gap-4">
+                <div className="flex flex-col sm:flex-row gap-4">
                   <select
                     value={statusFilter}
                     onChange={(e) => setStatusFilter(e.target.value)}
-                    className="px-4 py-3 rounded-xl border border-white/20 bg-white/50 backdrop-blur-sm focus:ring-2 focus:ring-copper/20 focus:border-copper/20 transition-all duration-300 text-charcoal min-w-[150px]"
+                    className="px-4 py-3 rounded-xl border border-white/20 bg-white/50 backdrop-blur-sm focus:ring-2 focus:ring-copper/20 focus:border-copper/20 transition-all duration-300 text-charcoal w-full sm:min-w-[150px] text-sm sm:text-base"
                   >
                     <option value="all">{t.allStatuses}</option>
                                           {RESERVATION_STATUSES.map(status => (
@@ -1137,14 +1137,14 @@ export default function AdminDashboard() {
                         </option>
                       ))}
                   </select>
-                  <label className="flex items-center gap-2 px-4 py-3 rounded-xl border border-white/20 bg-white/50 backdrop-blur-sm cursor-pointer hover:bg-white/60 transition-all duration-300">
+                  <label className="flex items-center gap-2 px-4 py-3 rounded-xl border border-white/20 bg-white/50 backdrop-blur-sm cursor-pointer hover:bg-white/60 transition-all duration-300 w-full sm:w-auto justify-center sm:justify-start">
                     <input
                       type="checkbox"
                       checked={showCancelled}
                       onChange={(e) => setShowCancelled(e.target.checked)}
                       className="form-checkbox h-5 w-5 text-copper rounded border-copper/20 focus:ring-copper"
                     />
-                    <span className="text-charcoal">{t.showCancelled}</span>
+                    <span className="text-charcoal text-sm sm:text-base">{t.showCancelled}</span>
                   </label>
                 </div>
               </div>
@@ -1334,98 +1334,100 @@ export default function AdminDashboard() {
                     className="group relative p-4 rounded-xl bg-sand-beige/40 hover:bg-sand-beige/60 transition-all duration-300 ease-out border border-white/20 cursor-pointer"
                     onClick={() => setExpandedCard(expandedCard === reservation.id ? null : reservation.id)}
                   >
-                    {/* Compact View - Always Visible */}
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-4 mb-2">
-                          <div className="font-playfair text-lg text-ink-black font-semibold">{reservation.customer_name}</div>
-                          <div className={`px-2 py-1 rounded-full text-xs font-semibold flex items-center gap-1 ${
-                            reservation.type === 'omakase' 
-                              ? 'bg-purple-100 text-purple-800' 
-                              : 'bg-blue-100 text-blue-800'
-                          }`}>
-                            <span>{reservation.type === 'omakase' ? '🍣' : '🍽️'}</span>
-                            <span>{reservation.type === 'omakase' ? t.omakaseType : t.diningType}</span>
-                          </div>
-                          <div className="text-copper text-sm font-semibold">
-                            📅 {format(new Date(reservation.reservation_date), 'MMM d')}
-                          </div>
-                          <div className="text-charcoal text-sm">
-                            👥 <span className="font-semibold">{reservation.party_size}</span>
-                          </div>
-                          {reservation.special_requests && (
-                            <div className="bg-amber-100 text-amber-800 px-2 py-1 rounded-full text-xs font-semibold flex items-center gap-1">
-                              <span>⚠️</span>
-                              <span>{t.specialRequest}</span>
+                                            {/* Compact View - Always Visible */}
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mb-2">
+                              <div className="font-playfair text-lg text-ink-black font-semibold truncate">{reservation.customer_name}</div>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <div className={`px-2 py-1 rounded-full text-xs font-semibold flex items-center gap-1 ${
+                                  reservation.type === 'omakase' 
+                                    ? 'bg-purple-100 text-purple-800' 
+                                    : 'bg-blue-100 text-blue-800'
+                                }`}>
+                                  <span>{reservation.type === 'omakase' ? '🍣' : '🍽️'}</span>
+                                  <span>{reservation.type === 'omakase' ? t.omakaseType : t.diningType}</span>
+                                </div>
+                                <div className="text-copper text-sm font-semibold">
+                                  📅 {format(new Date(reservation.reservation_date), 'MMM d')}
+                                </div>
+                                <div className="text-charcoal text-sm">
+                                  👥 <span className="font-semibold">{reservation.party_size}</span>
+                                </div>
+                                {reservation.special_requests && (
+                                  <div className="bg-amber-100 text-amber-800 px-2 py-1 rounded-full text-xs font-semibold flex items-center gap-1">
+                                    <span>⚠️</span>
+                                    <span className="hidden sm:inline">{t.specialRequest}</span>
+                                  </div>
+                                )}
+                              </div>
                             </div>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <span className={`px-2 py-1 rounded-full text-xs font-semibold ${RESERVATION_STATUSES.find(s => s.value === reservation.status)?.color || 'bg-gray-100 text-gray-800'}`}>
-                            {getStatusLabel(reservation.status)}
-                          </span>
-                          <span className="text-copper font-mono text-lg font-bold">{reservation.reservation_time}</span>
-                        </div>
-                      </div>
+                            <div className="flex items-center gap-3 flex-wrap">
+                              <span className={`px-2 py-1 rounded-full text-xs font-semibold ${RESERVATION_STATUSES.find(s => s.value === reservation.status)?.color || 'bg-gray-100 text-gray-800'}`}>
+                                {getStatusLabel(reservation.status)}
+                              </span>
+                              <span className="text-copper font-mono text-lg font-bold">{reservation.reservation_time}</span>
+                            </div>
+                          </div>
 
-                      {/* Action Buttons - Always Visible */}
-                      <div className="flex flex-wrap gap-2 ml-4">
+                          {/* Action Buttons - Always Visible */}
+                          <div className="flex flex-wrap gap-2 justify-end sm:justify-start sm:ml-4">
                         {reservation.status === 'pending' && (
-                          <button
-                            className="group relative bg-gradient-to-r from-emerald-600 to-green-600 text-white px-4 py-2 rounded-xl hover:from-emerald-700 hover:to-green-700 transition-all duration-300 font-semibold text-sm shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center gap-1"
-                            onClick={async (e) => {
-                              e.stopPropagation();
-                              await handleStatusChange(reservation.id, 'confirmed');
-                            }}
-                          >
-                            <span className="text-sm">✓</span>
-                            <span>{t.confirm}</span>
-                            <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                          </button>
-                        )}
+                                                      <button
+                              className="group relative bg-gradient-to-r from-emerald-600 to-green-600 text-white px-2 sm:px-4 py-1 sm:py-2 rounded-lg sm:rounded-xl hover:from-emerald-700 hover:to-green-700 transition-all duration-300 font-semibold text-xs sm:text-sm shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center gap-1"
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                await handleStatusChange(reservation.id, 'confirmed');
+                              }}
+                            >
+                              <span className="text-xs sm:text-sm">✓</span>
+                              <span className="hidden sm:inline">{t.confirm}</span>
+                              <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent rounded-lg sm:rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                            </button>
+                          )}
 
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleEditReservation(reservation);
-                          }}
-                          className="group relative liquid-glass bg-gradient-to-r from-copper/80 to-amber-600/80 text-white px-4 py-2 rounded-xl hover:from-copper hover:to-amber-700 transition-all duration-300 font-semibold text-sm shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center gap-1 backdrop-blur-sm border border-white/20"
-                        >
-                          <span className="text-sm">✏️</span>
-                          <span>{t.edit}</span>
-                          <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-sand-beige/20 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                        </button>
-
-                        {reservation.status !== 'cancelled' && (
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              const reason = window.prompt(
-                                'Please provide a reason for cancellation:\n\nCommon reasons:\n• ' + CANCELLATION_REASONS.join('\n• '),
-                                CANCELLATION_REASONS[0]
-                              )
-                              if (reason && reason.trim()) {
-                                handleCancelReservation(reservation.id, reason.trim())
-                              }
+                              handleEditReservation(reservation);
                             }}
-                            className="group relative liquid-glass bg-gradient-to-r from-red-400/80 to-rose-500/80 text-white px-4 py-2 rounded-xl hover:from-red-500 hover:to-rose-600 transition-all duration-300 font-semibold text-sm shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center gap-1 backdrop-blur-sm border border-white/20"
+                            className="group relative liquid-glass bg-gradient-to-r from-copper/80 to-amber-600/80 text-white px-2 sm:px-4 py-1 sm:py-2 rounded-lg sm:rounded-xl hover:from-copper hover:to-amber-700 transition-all duration-300 font-semibold text-xs sm:text-sm shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center gap-1 backdrop-blur-sm border border-white/20"
                           >
-                            <span className="text-sm">✕</span>
-                            <span>{t.cancelAction}</span>
-                            <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-sand-beige/20 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                            <span className="text-xs sm:text-sm">✏️</span>
+                            <span className="hidden sm:inline">{t.edit}</span>
+                            <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-sand-beige/20 rounded-lg sm:rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                           </button>
-                        )}
 
-                        {/* Status Change Dropdown */}
-                        <select
-                          value={reservation.status}
-                          onChange={(e) => {
-                            e.stopPropagation();
-                            handleStatusChange(reservation.id, e.target.value);
-                          }}
-                          onClick={(e) => e.stopPropagation()}
-                          className="px-3 py-2 border-2 border-copper/30 rounded-xl text-xs focus:ring-2 focus:ring-copper/50 focus:border-copper transition-all duration-300 liquid-glass bg-sand-beige/60 backdrop-blur-sm shadow-lg hover:shadow-xl font-semibold transform hover:-translate-y-0.5 text-ink-black hover:bg-sand-beige/80"
-                        >
+                          {reservation.status !== 'cancelled' && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const reason = window.prompt(
+                                  'Please provide a reason for cancellation:\n\nCommon reasons:\n• ' + CANCELLATION_REASONS.join('\n• '),
+                                  CANCELLATION_REASONS[0]
+                                )
+                                if (reason && reason.trim()) {
+                                  handleCancelReservation(reservation.id, reason.trim())
+                                }
+                              }}
+                              className="group relative liquid-glass bg-gradient-to-r from-red-400/80 to-rose-500/80 text-white px-2 sm:px-4 py-1 sm:py-2 rounded-lg sm:rounded-xl hover:from-red-500 hover:to-rose-600 transition-all duration-300 font-semibold text-xs sm:text-sm shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center gap-1 backdrop-blur-sm border border-white/20"
+                            >
+                              <span className="text-xs sm:text-sm">✕</span>
+                              <span className="hidden sm:inline">{t.cancelAction}</span>
+                              <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-sand-beige/20 rounded-lg sm:rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                            </button>
+                          )}
+
+                          {/* Status Change Dropdown */}
+                          <select
+                            value={reservation.status}
+                            onChange={(e) => {
+                              e.stopPropagation();
+                              handleStatusChange(reservation.id, e.target.value);
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="px-2 sm:px-3 py-1 sm:py-2 border-2 border-copper/30 rounded-lg sm:rounded-xl text-xs focus:ring-2 focus:ring-copper/50 focus:border-copper transition-all duration-300 liquid-glass bg-sand-beige/60 backdrop-blur-sm shadow-lg hover:shadow-xl font-semibold transform hover:-translate-y-0.5 text-ink-black hover:bg-sand-beige/80 min-w-0"
+                          >
                           {RESERVATION_STATUSES.map(status => (
                             <option key={status.value} value={status.value}>{t[status.labelKey as keyof typeof t]}</option>
                           ))}
@@ -1484,114 +1486,118 @@ export default function AdminDashboard() {
         </div>
 
         {/* Stats Cards - Moved After Calendar/Reservations */}
-        <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
-          <div className="group relative liquid-glass p-6 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 wabi-sabi-border overflow-hidden transform hover:-translate-y-0.5">
-            <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-br from-copper/20 to-transparent rounded-full transform translate-x-6 -translate-y-6"></div>
+        <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8 sm:mb-12">
+          <div className="group relative liquid-glass p-4 sm:p-6 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 wabi-sabi-border overflow-hidden transform hover:-translate-y-0.5">
+            <div className="absolute top-0 right-0 w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-copper/20 to-transparent rounded-full transform translate-x-4 sm:translate-x-6 -translate-y-4 sm:-translate-y-6"></div>
             <div className="relative z-10">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-semibold text-copper">Today's Reservations</h3>
-                <div className="w-8 h-8 bg-gradient-to-br from-copper/20 to-copper/10 rounded-lg flex items-center justify-center">
-                  <span className="text-lg">📅</span>
+                <h3 className="text-xs sm:text-sm font-semibold text-copper">{t.todayReservations}</h3>
+                <div className="w-6 h-6 sm:w-8 sm:h-8 bg-gradient-to-br from-copper/20 to-copper/10 rounded-lg flex items-center justify-center">
+                  <span className="text-sm sm:text-lg">📅</span>
                 </div>
               </div>
               <div className="flex items-end justify-between mb-2">
-                <p className="text-3xl font-bold text-ink-black">{stats.todayReservations}</p>
+                <p className="text-2xl sm:text-3xl font-bold text-ink-black">{stats.todayReservations}</p>
                 <TrendChart 
                   data={stats.dailyTrend} 
-                  width={50} 
-                  height={20}
-                  className="mb-1"
+                  width={40} 
+                  height={16}
+                  className="mb-1 sm:w-[50px] sm:h-[20px]"
                 />
               </div>
-              <p className="text-xs text-charcoal/60">Active reservations • Yesterday → Today → Tomorrow</p>
+              <p className="text-xs text-charcoal/60 hidden sm:block">Active reservations • Yesterday → Today → Tomorrow</p>
+              <p className="text-xs text-charcoal/60 sm:hidden">{t.daily}</p>
             </div>
           </div>
           
-          <div className="group relative liquid-glass p-6 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 wabi-sabi-border overflow-hidden transform hover:-translate-y-0.5">
-            <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-br from-emerald-500/20 to-transparent rounded-full transform translate-x-6 -translate-y-6"></div>
+          <div className="group relative liquid-glass p-4 sm:p-6 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 wabi-sabi-border overflow-hidden transform hover:-translate-y-0.5">
+            <div className="absolute top-0 right-0 w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-emerald-500/20 to-transparent rounded-full transform translate-x-4 sm:translate-x-6 -translate-y-4 sm:-translate-y-6"></div>
             <div className="relative z-10">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-semibold text-copper">This Week</h3>
-                <div className="w-8 h-8 bg-gradient-to-br from-emerald-500/20 to-emerald-500/10 rounded-lg flex items-center justify-center">
-                  <span className="text-lg">📊</span>
+                <h3 className="text-xs sm:text-sm font-semibold text-copper">{t.weekReservations}</h3>
+                <div className="w-6 h-6 sm:w-8 sm:h-8 bg-gradient-to-br from-emerald-500/20 to-emerald-500/10 rounded-lg flex items-center justify-center">
+                  <span className="text-sm sm:text-lg">📊</span>
                 </div>
               </div>
               <div className="flex items-end justify-between mb-2">
-                <p className="text-3xl font-bold text-ink-black">{stats.weekReservations}</p>
+                <p className="text-2xl sm:text-3xl font-bold text-ink-black">{stats.weekReservations}</p>
                 <TrendChart 
                   data={stats.weeklyTrend} 
-                  width={50} 
-                  height={20}
-                  className="mb-1"
+                  width={40} 
+                  height={16}
+                  className="mb-1 sm:w-[50px] sm:h-[20px]"
                 />
               </div>
-              <p className="text-xs text-charcoal/60">Weekly bookings • Last → This → Next Week</p>
+              <p className="text-xs text-charcoal/60 hidden sm:block">Weekly bookings • Last → This → Next Week</p>
+              <p className="text-xs text-charcoal/60 sm:hidden">{t.weekly}</p>
             </div>
           </div>
           
-          <div className="group relative liquid-glass p-6 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 wabi-sabi-border overflow-hidden transform hover:-translate-y-0.5">
-            <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-br from-amber-500/20 to-transparent rounded-full transform translate-x-6 -translate-y-6"></div>
+          <div className="group relative liquid-glass p-4 sm:p-6 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 wabi-sabi-border overflow-hidden transform hover:-translate-y-0.5">
+            <div className="absolute top-0 right-0 w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-amber-500/20 to-transparent rounded-full transform translate-x-4 sm:translate-x-6 -translate-y-4 sm:-translate-y-6"></div>
             <div className="relative z-10">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-semibold text-copper">Total Revenue</h3>
-                <div className="w-8 h-8 bg-gradient-to-br from-amber-500/20 to-amber-500/10 rounded-lg flex items-center justify-center">
-                  <span className="text-lg">💰</span>
+                <h3 className="text-xs sm:text-sm font-semibold text-copper">{t.totalRevenue}</h3>
+                <div className="w-6 h-6 sm:w-8 sm:h-8 bg-gradient-to-br from-amber-500/20 to-amber-500/10 rounded-lg flex items-center justify-center">
+                  <span className="text-sm sm:text-lg">💰</span>
                 </div>
               </div>
               <div className="flex items-end justify-between mb-2">
-                <p className="text-3xl font-bold text-ink-black">${stats.totalRevenue.toLocaleString()}</p>
+                <p className="text-xl sm:text-3xl font-bold text-ink-black">${stats.totalRevenue.toLocaleString()}</p>
                 <TrendChart 
                   data={stats.revenueTrend} 
-                  width={50} 
-                  height={20}
-                  className="mb-1"
+                  width={40} 
+                  height={16}
+                  className="mb-1 sm:w-[50px] sm:h-[20px]"
                 />
               </div>
-              <p className="text-xs text-charcoal/60">Confirmed bookings • Weekly revenue trend</p>
+              <p className="text-xs text-charcoal/60 hidden sm:block">Confirmed bookings • Weekly revenue trend</p>
+              <p className="text-xs text-charcoal/60 sm:hidden">{t.totalRevenue}</p>
             </div>
           </div>
           
-          <div className="group relative liquid-glass p-6 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 wabi-sabi-border overflow-hidden transform hover:-translate-y-0.5">
-            <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-br from-purple-500/20 to-transparent rounded-full transform translate-x-6 -translate-y-6"></div>
+          <div className="group relative liquid-glass p-4 sm:p-6 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 wabi-sabi-border overflow-hidden transform hover:-translate-y-0.5">
+            <div className="absolute top-0 right-0 w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-purple-500/20 to-transparent rounded-full transform translate-x-4 sm:translate-x-6 -translate-y-4 sm:-translate-y-6"></div>
             <div className="relative z-10">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-semibold text-copper">Avg Party Size</h3>
-                <div className="w-8 h-8 bg-gradient-to-br from-purple-500/20 to-purple-500/10 rounded-lg flex items-center justify-center">
-                  <span className="text-lg">👥</span>
+                <h3 className="text-xs sm:text-sm font-semibold text-copper">{t.avgPartySize}</h3>
+                <div className="w-6 h-6 sm:w-8 sm:h-8 bg-gradient-to-br from-purple-500/20 to-purple-500/10 rounded-lg flex items-center justify-center">
+                  <span className="text-sm sm:text-lg">👥</span>
                 </div>
               </div>
               <div className="flex items-end justify-between mb-2">
-                <p className="text-3xl font-bold text-ink-black">{stats.avgPartySize}</p>
+                <p className="text-2xl sm:text-3xl font-bold text-ink-black">{stats.avgPartySize}</p>
                 <TrendChart 
                   data={stats.partySizeTrend} 
-                  width={50} 
-                  height={20}
-                  className="mb-1"
+                  width={40} 
+                  height={16}
+                  className="mb-1 sm:w-[50px] sm:h-[20px]"
                 />
               </div>
-              <p className="text-xs text-charcoal/60">People per table • Weekly average trend</p>
+              <p className="text-xs text-charcoal/60 hidden sm:block">People per table • Weekly average trend</p>
+              <p className="text-xs text-charcoal/60 sm:hidden">{t.avgPartySize}</p>
             </div>
           </div>
         </section>
 
         {/* System Status */}
-        <section className="liquid-glass p-8 rounded-3xl shadow-xl hover:shadow-2xl transition-all duration-500 wabi-sabi-border transform hover:-translate-y-1">
-          <h3 className="elegant-subtitle text-copper mb-6 text-xl">System Status</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="flex items-center gap-3 p-4 bg-white/40 rounded-xl">
+        <section className="liquid-glass p-4 sm:p-8 rounded-3xl shadow-xl hover:shadow-2xl transition-all duration-500 wabi-sabi-border transform hover:-translate-y-1">
+          <h3 className="elegant-subtitle text-copper mb-4 sm:mb-6 text-lg sm:text-xl">{t.systemStatus}</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
+            <div className="flex items-center gap-2 sm:gap-3 p-3 sm:p-4 bg-white/40 rounded-xl">
               <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
-              <span className="text-ink-black font-medium">Database</span>
-              <span className="font-bold text-green-600 ml-auto">Connected</span>
+              <span className="text-ink-black font-medium text-sm sm:text-base">{t.database}</span>
+              <span className="font-bold text-green-600 ml-auto text-sm sm:text-base">{t.connected}</span>
             </div>
-            <div className="flex items-center gap-3 p-4 bg-white/40 rounded-xl">
+            <div className="flex items-center gap-2 sm:gap-3 p-3 sm:p-4 bg-white/40 rounded-xl">
               <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
-              <span className="text-ink-black font-medium">Email Service</span>
-              <span className="font-bold text-green-600 ml-auto">Active</span>
+              <span className="text-ink-black font-medium text-sm sm:text-base">{t.emailService}</span>
+              <span className="font-bold text-green-600 ml-auto text-sm sm:text-base">{t.active}</span>
             </div>
-            <div className="flex items-center gap-3 p-4 bg-white/40 rounded-xl">
+            <div className="flex items-center gap-2 sm:gap-3 p-3 sm:p-4 bg-white/40 rounded-xl">
               <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
-              <span className="text-ink-black font-medium">API Status</span>
-              <span className="font-bold text-green-600 ml-auto">Healthy</span>
+              <span className="text-ink-black font-medium text-sm sm:text-base">{t.apiStatus}</span>
+              <span className="font-bold text-green-600 ml-auto text-sm sm:text-base">{t.healthy}</span>
             </div>
           </div>
         </section>
@@ -1599,77 +1605,77 @@ export default function AdminDashboard() {
 
       {/* Edit Reservation Modal */}
       {editingReservation && (
-        <div className="fixed inset-0 bg-black/30 backdrop-blur-md flex items-center justify-center p-4 z-50">
-          <div className="bg-gradient-to-br from-sand-beige/95 to-white/90 backdrop-blur-xl rounded-3xl p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-copper/20">
-            <div className="flex items-center justify-between mb-8">
-              <h2 className="text-3xl font-playfair text-copper">Edit Reservation</h2>
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 z-50">
+          <div className="bg-gradient-to-br from-sand-beige/95 to-white/90 backdrop-blur-xl rounded-3xl p-4 sm:p-8 max-w-2xl w-full max-h-[95vh] sm:max-h-[90vh] overflow-y-auto shadow-2xl border border-copper/20">
+            <div className="flex items-center justify-between mb-4 sm:mb-8">
+              <h2 className="text-xl sm:text-3xl font-playfair text-copper">{t.editReservation}</h2>
               <button
                 onClick={() => setEditingReservation(null)}
-                className="w-10 h-10 rounded-full bg-sand-beige/60 hover:bg-sand-beige/80 flex items-center justify-center transition-colors duration-200"
+                className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-sand-beige/60 hover:bg-sand-beige/80 flex items-center justify-center transition-colors duration-200"
               >
-                <span className="text-gray-600">✕</span>
+                <span className="text-gray-600 text-sm sm:text-base">✕</span>
               </button>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
               <div>
-                <label className="block text-sm font-semibold text-ink-black mb-3">Customer Name</label>
+                <label className="block text-xs sm:text-sm font-semibold text-ink-black mb-2 sm:mb-3">{t.customerName}</label>
                 <input
                   type="text"
                   value={editingReservation.customer_name}
                   onChange={(e) => setEditingReservation({...editingReservation, customer_name: e.target.value})}
-                  className="w-full px-4 py-3 border-2 border-copper/20 rounded-xl focus:ring-2 focus:ring-copper focus:border-copper transition-all duration-300 bg-sand-beige/40 text-ink-black placeholder:text-gray-500"
+                  className="w-full px-3 sm:px-4 py-2 sm:py-3 border-2 border-copper/20 rounded-xl focus:ring-2 focus:ring-copper focus:border-copper transition-all duration-300 bg-sand-beige/40 text-ink-black placeholder:text-gray-500 text-sm sm:text-base"
                 />
               </div>
               
               <div>
-                <label className="block text-sm font-semibold text-ink-black mb-3">Email</label>
+                <label className="block text-xs sm:text-sm font-semibold text-ink-black mb-2 sm:mb-3">{t.customerEmail}</label>
                 <input
                   type="email"
                   value={editingReservation.customer_email}
                   onChange={(e) => setEditingReservation({...editingReservation, customer_email: e.target.value})}
-                  className="w-full px-4 py-3 border-2 border-copper/20 rounded-xl focus:ring-2 focus:ring-copper focus:border-copper transition-all duration-300 bg-sand-beige/40 text-ink-black placeholder:text-gray-500"
+                  className="w-full px-3 sm:px-4 py-2 sm:py-3 border-2 border-copper/20 rounded-xl focus:ring-2 focus:ring-copper focus:border-copper transition-all duration-300 bg-sand-beige/40 text-ink-black placeholder:text-gray-500 text-sm sm:text-base"
                 />
               </div>
               
               <div>
-                <label className="block text-sm font-semibold text-ink-black mb-3">Phone</label>
+                <label className="block text-xs sm:text-sm font-semibold text-ink-black mb-2 sm:mb-3">{t.customerPhone}</label>
                 <input
                   type="tel"
                   value={editingReservation.customer_phone}
                   onChange={(e) => setEditingReservation({...editingReservation, customer_phone: e.target.value})}
-                  className="w-full px-4 py-3 border-2 border-copper/20 rounded-xl focus:ring-2 focus:ring-copper focus:border-copper transition-all duration-300 bg-sand-beige/40 text-ink-black placeholder:text-gray-500"
+                  className="w-full px-3 sm:px-4 py-2 sm:py-3 border-2 border-copper/20 rounded-xl focus:ring-2 focus:ring-copper focus:border-copper transition-all duration-300 bg-sand-beige/40 text-ink-black placeholder:text-gray-500 text-sm sm:text-base"
                 />
               </div>
               
               <div>
-                <label className="block text-sm font-semibold text-ink-black mb-3">Party Size</label>
+                <label className="block text-xs sm:text-sm font-semibold text-ink-black mb-2 sm:mb-3">{t.partySize}</label>
                 <input
                   type="number"
                   min="1"
                   max="15"
                   value={editingReservation.party_size}
                   onChange={(e) => setEditingReservation({...editingReservation, party_size: parseInt(e.target.value)})}
-                  className="w-full px-4 py-3 border-2 border-copper/20 rounded-xl focus:ring-2 focus:ring-copper focus:border-copper transition-all duration-300 bg-sand-beige/40 text-ink-black placeholder:text-gray-500"
+                  className="w-full px-3 sm:px-4 py-2 sm:py-3 border-2 border-copper/20 rounded-xl focus:ring-2 focus:ring-copper focus:border-copper transition-all duration-300 bg-sand-beige/40 text-ink-black placeholder:text-gray-500 text-sm sm:text-base"
                 />
               </div>
               
               <div>
-                <label className="block text-sm font-semibold text-ink-black mb-3">Date</label>
+                <label className="block text-xs sm:text-sm font-semibold text-ink-black mb-2 sm:mb-3">{t.reservationDate}</label>
                 <input
                   type="date"
                   value={editingReservation.reservation_date}
                   onChange={(e) => setEditingReservation({...editingReservation, reservation_date: e.target.value})}
-                  className="w-full px-4 py-3 border-2 border-copper/20 rounded-xl focus:ring-2 focus:ring-copper focus:border-copper transition-all duration-300 bg-sand-beige/40 text-ink-black"
+                  className="w-full px-3 sm:px-4 py-2 sm:py-3 border-2 border-copper/20 rounded-xl focus:ring-2 focus:ring-copper focus:border-copper transition-all duration-300 bg-sand-beige/40 text-ink-black text-sm sm:text-base"
                 />
               </div>
               
               <div>
-                <label className="block text-sm font-semibold text-ink-black mb-3">Time</label>
+                <label className="block text-xs sm:text-sm font-semibold text-ink-black mb-2 sm:mb-3">{t.reservationTime}</label>
                 <select
                   value={editingReservation.reservation_time}
                   onChange={(e) => setEditingReservation({...editingReservation, reservation_time: e.target.value})}
-                  className="w-full px-4 py-3 border-2 border-copper/20 rounded-xl focus:ring-2 focus:ring-copper focus:border-copper transition-all duration-300 bg-sand-beige/40 text-ink-black"
+                  className="w-full px-3 sm:px-4 py-2 sm:py-3 border-2 border-copper/20 rounded-xl focus:ring-2 focus:ring-copper focus:border-copper transition-all duration-300 bg-sand-beige/40 text-ink-black text-sm sm:text-base"
                 >
                   {TIME_SLOTS.map(time => (
                     <option key={time} value={time}>{time}</option>
@@ -1678,40 +1684,40 @@ export default function AdminDashboard() {
               </div>
             </div>
             
-            <div className="mb-6">
-              <label className="block text-sm font-semibold text-ink-black mb-3">Special Requests</label>
+            <div className="mb-4 sm:mb-6">
+              <label className="block text-xs sm:text-sm font-semibold text-ink-black mb-2 sm:mb-3">{t.specialRequestsLabel}</label>
               <textarea
                 value={editingReservation.special_requests}
                 onChange={(e) => setEditingReservation({...editingReservation, special_requests: e.target.value})}
                 rows={3}
-                className="w-full px-4 py-3 border-2 border-copper/20 rounded-xl focus:ring-2 focus:ring-copper focus:border-copper transition-all duration-300 bg-sand-beige/40 text-ink-black placeholder:text-gray-500"
+                className="w-full px-3 sm:px-4 py-2 sm:py-3 border-2 border-copper/20 rounded-xl focus:ring-2 focus:ring-copper focus:border-copper transition-all duration-300 bg-sand-beige/40 text-ink-black placeholder:text-gray-500 text-sm sm:text-base"
                 placeholder="Any special dietary requirements or requests..."
               />
             </div>
             
-            <div className="mb-6">
-              <label className="block text-sm font-semibold text-ink-black mb-3">Internal Notes</label>
+            <div className="mb-6 sm:mb-8">
+              <label className="block text-xs sm:text-sm font-semibold text-ink-black mb-2 sm:mb-3">{t.internalNotesLabel}</label>
               <textarea
                 value={editingReservation.notes}
                 onChange={(e) => setEditingReservation({...editingReservation, notes: e.target.value})}
                 rows={2}
-                className="w-full px-4 py-3 border-2 border-copper/20 rounded-xl focus:ring-2 focus:ring-copper focus:border-copper transition-all duration-300 bg-sand-beige/40 text-ink-black placeholder:text-gray-500"
+                className="w-full px-3 sm:px-4 py-2 sm:py-3 border-2 border-copper/20 rounded-xl focus:ring-2 focus:ring-copper focus:border-copper transition-all duration-300 bg-sand-beige/40 text-ink-black placeholder:text-gray-500 text-sm sm:text-base"
                 placeholder="Internal notes (not visible to customer)"
               />
             </div>
             
-            <div className="flex gap-4 justify-end pt-6 border-t border-copper/20">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-end pt-4 sm:pt-6 border-t border-copper/20">
               <button
                 onClick={() => setEditingReservation(null)}
-                className="group relative px-8 py-3 border-2 border-gray-300 rounded-xl hover:border-gray-400 transition-all duration-300 font-semibold bg-white shadow-sm hover:shadow-md transform hover:-translate-y-0.5"
+                className="group relative px-4 sm:px-8 py-2 sm:py-3 border-2 border-gray-300 rounded-xl hover:border-gray-400 transition-all duration-300 font-semibold bg-white shadow-sm hover:shadow-md transform hover:-translate-y-0.5 text-sm sm:text-base order-2 sm:order-1"
               >
                 <span>Cancel</span>
               </button>
               <button
                 onClick={handleSaveEdit}
-                className="group relative bg-gradient-to-r from-emerald-600 to-green-600 text-white px-8 py-3 rounded-xl hover:from-emerald-700 hover:to-green-700 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                className="group relative bg-gradient-to-r from-emerald-600 to-green-600 text-white px-4 sm:px-8 py-2 sm:py-3 rounded-xl hover:from-emerald-700 hover:to-green-700 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 text-sm sm:text-base order-1 sm:order-2"
               >
-                <span>Save Changes</span>
+                <span>{t.saveChanges}</span>
                 <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
               </button>
             </div>
