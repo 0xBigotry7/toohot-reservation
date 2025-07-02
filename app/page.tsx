@@ -171,6 +171,12 @@ export default function AdminDashboard() {
   // Settings modal ref for click outside detection
   const settingsModalRef = useRef<HTMLDivElement>(null)
 
+  // Helper function to parse dates in local timezone (fixes UTC/timezone bugs)
+  const parseLocalDate = (dateStr: string) => {
+    const [year, month, day] = dateStr.split('-').map(Number)
+    return new Date(year, month - 1, day) // month is 0-indexed
+  }
+
   // Load language preference from localStorage on mount
   useEffect(() => {
     const savedLanguage = localStorage.getItem('toohot-language') as 'en' | 'zh'
@@ -403,13 +409,12 @@ export default function AdminDashboard() {
   // Check if a date should be closed (specific date, weekday, or holiday)
   const isDateClosed = (dateStr: string) => {
     // Fix timezone issue: parse date in local timezone instead of UTC
-    const [year, month, day] = dateStr.split('-').map(Number)
-    const date = new Date(year, month - 1, day) // month is 0-indexed
+    const date = parseLocalDate(dateStr)
     const jsWeekday = date.getDay() // JavaScript weekday (0=Sunday, 1=Monday, etc.)
     
     // DEBUG: Log every July date to see what's happening
     if (dateStr.includes('2025-07-')) {
-      console.log(`🔍 ${dateStr} -> new Date(${year}, ${month-1}, ${day}) = ${date.toString()} -> getDay() = ${jsWeekday} (${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][jsWeekday]})`)
+      console.log(`🔍 ${dateStr} -> parseLocalDate() = ${date.toString()} -> getDay() = ${jsWeekday} (${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][jsWeekday]})`)
     }
     
     // HARD-CODED: BLOCK ALL MONDAYS (FIXED - using consistent JavaScript .getDay())
@@ -2150,7 +2155,7 @@ export default function AdminDashboard() {
                               <span>{reservation.type === 'omakase' ? 'Omakase' : 'Dining'}</span>
                             </div>
                             <div className="text-copper text-sm font-semibold">
-                              📅 {format(new Date(reservation.reservation_date), 'MMM d')}
+                              📅 {format(parseLocalDate(reservation.reservation_date), 'MMM d')}
                             </div>
                             <div className="text-charcoal text-sm">
                               👥 <span className="font-semibold">{reservation.party_size}</span>
@@ -2313,7 +2318,7 @@ export default function AdminDashboard() {
                                 <span>{reservation.type === 'omakase' ? 'Omakase' : 'Dining'}</span>
                               </div>
                               <div className="text-copper text-sm font-semibold">
-                                📅 {format(new Date(reservation.reservation_date), 'MMM d')}
+                                📅 {format(parseLocalDate(reservation.reservation_date), 'MMM d')}
                               </div>
                               <div className="text-charcoal text-sm">
                                 👥 <span className="font-semibold">{reservation.party_size}</span>
