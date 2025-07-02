@@ -409,7 +409,11 @@ export default function AdminDashboard() {
     if (closedDates.includes(dateStr)) return true
     
     // Check weekly closures
-    if (closedWeekdays.includes(dayOfWeek)) return true
+    if (closedWeekdays.includes(dayOfWeek)) {
+      // Debug logging to help identify the issue
+      console.log(`Date ${dateStr} is closed - Day of week: ${dayOfWeek} (${['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][dayOfWeek]}), Closed weekdays: [${closedWeekdays.join(', ')}]`)
+      return true
+    }
     
     // Check holidays
     if (holidays.some(h => h.date === dateStr && h.closed)) return true
@@ -889,6 +893,13 @@ export default function AdminDashboard() {
       const data = await response.json()
       
       if (data.success) {
+        // Debug logging to track state loading
+        console.log('Fetched closed dates from server:', {
+          closedDates: data.closedDates || [],
+          closedWeekdays: data.closedWeekdays || [],
+          source: data.source
+        })
+        
         setClosedDates(data.closedDates || [])
         setClosedWeekdays(data.closedWeekdays || [])
         
@@ -1048,6 +1059,11 @@ export default function AdminDashboard() {
       ? closedWeekdays.filter(d => d !== dayIndex)
       : [...closedWeekdays, dayIndex].sort()
     
+    // Debug logging
+    console.log(`Toggling weekday ${dayIndex} (${['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][dayIndex]})`)
+    console.log(`Current closedWeekdays: [${closedWeekdays.join(', ')}]`)
+    console.log(`Updated closedWeekdays: [${updatedWeekdays.join(', ')}]`)
+    
     setClosedWeekdays(updatedWeekdays)
     
     // Auto-save with updated data
@@ -1065,6 +1081,9 @@ export default function AdminDashboard() {
       const data = await response.json()
       
       if (data.success) {
+        // Refresh the closed dates state from the server to ensure sync
+        await fetchClosedDates()
+        
         const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
         const dayName = dayNames[dayIndex]
         const isNowClosed = updatedWeekdays.includes(dayIndex)
@@ -1081,6 +1100,8 @@ export default function AdminDashboard() {
         title: "Error",
         description: "Failed to save weekday setting. Please try again.",
       })
+      // Revert the state change on error
+      setClosedWeekdays(closedWeekdays)
     }
   }
 
