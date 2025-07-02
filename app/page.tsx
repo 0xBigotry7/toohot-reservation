@@ -3050,17 +3050,26 @@ export default function AdminDashboard() {
                           <p className="text-sm text-charcoal/60 mb-4">{t.availabilityHelpText}</p>
                           
                           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                            {t.weekdays.map((dayName, index) => (
+                            {/* Display weekdays in Monday-first order to match calendar */}
+                            {[
+                              { name: t.weekdays[1], jsIndex: 1 }, // Monday
+                              { name: t.weekdays[2], jsIndex: 2 }, // Tuesday  
+                              { name: t.weekdays[3], jsIndex: 3 }, // Wednesday
+                              { name: t.weekdays[4], jsIndex: 4 }, // Thursday
+                              { name: t.weekdays[5], jsIndex: 5 }, // Friday
+                              { name: t.weekdays[6], jsIndex: 6 }, // Saturday
+                              { name: t.weekdays[0], jsIndex: 0 }, // Sunday
+                            ].map((day) => (
                               <button
-                                key={index}
-                                onClick={() => toggleOmakaseDay(index)}
+                                key={day.jsIndex}
+                                onClick={() => toggleOmakaseDay(day.jsIndex)}
                                 className={`p-3 rounded-lg text-sm font-medium transition-all duration-200 ${
-                                  availabilitySettings.omakaseAvailableDays.includes(index)
+                                  availabilitySettings.omakaseAvailableDays.includes(day.jsIndex)
                                     ? 'bg-purple-500 text-white shadow-md'
                                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                                 }`}
                               >
-                                {dayName}
+                                {day.name}
                               </button>
                             ))}
                           </div>
@@ -3079,17 +3088,26 @@ export default function AdminDashboard() {
                           <p className="text-sm text-charcoal/60 mb-4">{t.availabilityHelpText}</p>
                           
                           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                            {t.weekdays.map((dayName, index) => (
+                            {/* Display weekdays in Monday-first order to match calendar */}
+                            {[
+                              { name: t.weekdays[1], jsIndex: 1 }, // Monday
+                              { name: t.weekdays[2], jsIndex: 2 }, // Tuesday  
+                              { name: t.weekdays[3], jsIndex: 3 }, // Wednesday
+                              { name: t.weekdays[4], jsIndex: 4 }, // Thursday
+                              { name: t.weekdays[5], jsIndex: 5 }, // Friday
+                              { name: t.weekdays[6], jsIndex: 6 }, // Saturday
+                              { name: t.weekdays[0], jsIndex: 0 }, // Sunday
+                            ].map((day) => (
                               <button
-                                key={index}
-                                onClick={() => toggleDiningDay(index)}
+                                key={day.jsIndex}
+                                onClick={() => toggleDiningDay(day.jsIndex)}
                                 className={`p-3 rounded-lg text-sm font-medium transition-all duration-200 ${
-                                  availabilitySettings.diningAvailableDays.includes(index)
+                                  availabilitySettings.diningAvailableDays.includes(day.jsIndex)
                                     ? 'bg-blue-500 text-white shadow-md'
                                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                                 }`}
                               >
-                                {dayName}
+                                {day.name}
                               </button>
                             ))}
                           </div>
@@ -3205,17 +3223,26 @@ export default function AdminDashboard() {
                           <p className="text-sm text-charcoal/60 mb-4">{t.weeklyClosuresDesc}</p>
                           
                           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                            {t.weekdays.map((dayName, index) => (
+                            {/* Display weekdays in Monday-first order to match calendar */}
+                            {[
+                              { name: t.weekdays[1], jsIndex: 1 }, // Monday
+                              { name: t.weekdays[2], jsIndex: 2 }, // Tuesday  
+                              { name: t.weekdays[3], jsIndex: 3 }, // Wednesday
+                              { name: t.weekdays[4], jsIndex: 4 }, // Thursday
+                              { name: t.weekdays[5], jsIndex: 5 }, // Friday
+                              { name: t.weekdays[6], jsIndex: 6 }, // Saturday
+                              { name: t.weekdays[0], jsIndex: 0 }, // Sunday
+                            ].map((day) => (
                               <button
-                                key={index}
-                                onClick={() => toggleWeekday(index)}
+                                key={day.jsIndex}
+                                onClick={() => toggleWeekday(day.jsIndex)}
                                 className={`p-3 rounded-lg text-sm font-medium transition-all duration-200 ${
-                                  closedWeekdays.includes(index)
+                                  closedWeekdays.includes(day.jsIndex)
                                     ? 'bg-red-500 text-white shadow-md'
                                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                                 }`}
                               >
-                                {dayName}
+                                {day.name}
                               </button>
                             ))}
                           </div>
