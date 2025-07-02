@@ -412,26 +412,18 @@ export default function AdminDashboard() {
     const date = parseLocalDate(dateStr)
     const jsWeekday = date.getDay() // JavaScript weekday (0=Sunday, 1=Monday, etc.)
     
-    // DEBUG: Log every July date to see what's happening
-    if (dateStr.includes('2025-07-')) {
-      console.log(`🔍 ${dateStr} -> parseLocalDate() = ${date.toString()} -> getDay() = ${jsWeekday} (${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][jsWeekday]})`)
-    }
-    
-    // HARD-CODED: BLOCK ALL MONDAYS (FIXED - using consistent JavaScript .getDay())
-    if (jsWeekday === 1) {
-      console.log(`🚫 ${dateStr} CLOSED - REASON: HARD-CODED MONDAY BLOCK (jsWeekday=${jsWeekday})`)
+    // Check specific closed dates FIRST
+    if (closedDates.includes(dateStr)) {
       return true
     }
     
-    // Check specific closed dates FIRST
-    if (closedDates.includes(dateStr)) {
-      console.log(`🚫 ${dateStr} CLOSED - REASON: Specific closed date`)
+    // Check weekly closures (using getDay() values: 0=Sunday, 1=Monday, etc.)
+    if (closedWeekdays.includes(jsWeekday)) {
       return true
     }
     
     // Check holidays
     if (holidays.some(h => h.date === dateStr && h.closed)) {
-      console.log(`🚫 ${dateStr} CLOSED - REASON: Holiday`)
       return true
     }
     
@@ -919,25 +911,8 @@ export default function AdminDashboard() {
       const data = await response.json()
       
       if (data.success) {
-        // Debug logging to track state loading
-        console.log('Fetched closed dates from server:', {
-          closedDates: data.closedDates || [],
-          closedWeekdays: data.closedWeekdays || [],
-          source: data.source
-        })
-        
         setClosedDates(data.closedDates || [])
-        // Use weekday values directly (getDay() format)
-        const weekdays = data.closedWeekdays || []
-        
-        // Debug logging for weekday data
-        console.log('📊 WEEKDAY DEBUG:')
-        console.log('  Weekdays from server:', weekdays)
-        weekdays.forEach((weekday) => {
-          console.log(`  Weekday ${weekday} (${['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][weekday]})`)
-        })
-        
-        setClosedWeekdays(weekdays)
+        setClosedWeekdays(data.closedWeekdays || [])
         
         // Handle holidays more robustly
         const savedHolidays = data.holidays || []
@@ -1095,12 +1070,6 @@ export default function AdminDashboard() {
     const updatedWeekdays = closedWeekdays.includes(weekdayValue)
       ? closedWeekdays.filter(d => d !== weekdayValue)
       : [...closedWeekdays, weekdayValue].sort()
-    
-    // Debug logging 
-    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
-    console.log(`Toggling weekday ${weekdayValue} (${dayNames[weekdayValue]})`)
-    console.log(`Current closedWeekdays: [${closedWeekdays.join(', ')}]`)
-    console.log(`Updated closedWeekdays: [${updatedWeekdays.join(', ')}]`)
     
     setClosedWeekdays(updatedWeekdays)
     
@@ -1352,12 +1321,6 @@ export default function AdminDashboard() {
       start: now,
       end: addDays(now, 29),
     });
-    
-    console.log(`📅 30-day calendar generation:`)
-    console.log(`  Today: ${format(now, 'MMM d')} (${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][now.getDay()]})`)
-    console.log(`  First day in calendar: ${format(daysArr[0], 'MMM d')} (${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][daysArr[0].getDay()]})`)
-    console.log(`  July 7: index ${daysArr.findIndex(d => format(d, 'MMM d') === 'Jul 7')}`)
-    console.log(`  July 8: index ${daysArr.findIndex(d => format(d, 'MMM d') === 'Jul 8')}`)
     
     setDays(daysArr);
   }, []);
@@ -1984,7 +1947,6 @@ export default function AdminDashboard() {
                   const jsWeekday = firstDay.getDay(); // Use native JavaScript getDay() for consistency
                   // Sunday-first format: use getDay() directly as offset
                   const offset = jsWeekday;
-                  console.log(`📅 Calendar offset debug: First day ${format(firstDay, 'MMM d')} is ${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][jsWeekday]}, offset=${offset}`);
                   return Array.from({ length: offset }).map((_, i) => (
                     <div key={`empty-${i}`} />
                   ));
@@ -1997,25 +1959,7 @@ export default function AdminDashboard() {
                   const capacity = calculateCapacityForDate(reservationsForDay);
                   const isClosedDate = isDateClosed(key);
                   
-                  // Debug for July dates specifically
-                  if (format(day, 'MMM d').includes('Jul')) {
-                    const dayOfWeek = day.getDay(); // Use native JavaScript getDay() for consistency
-                    const dateStr = format(day, 'yyyy-MM-dd');
-                    console.log(`🎯 ${format(day, 'MMM d')}: weekday=${dayOfWeek} (${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][dayOfWeek]}), closed=${isClosedDate}, date=${dateStr}`);
-                    
-                    // If it's closed, show WHY it's closed
-                    if (isClosedDate) {
-                      if (closedDates.includes(dateStr)) {
-                        console.log(`   ❌ REASON: Found in specific closed dates list`);
-                      }
-                      if (closedWeekdays.includes(dayOfWeek)) {
-                        console.log(`   ❌ REASON: Weekday ${dayOfWeek} (${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][dayOfWeek]}) is in weekly closures [${closedWeekdays.join(', ')}]`);
-                      }
-                      if (holidays.some(h => h.date === dateStr && h.closed)) {
-                        console.log(`   ❌ REASON: Holiday closure`);
-                      }
-                    }
-                  }
+
                   
                   return (
                     <button
@@ -3314,40 +3258,7 @@ export default function AdminDashboard() {
                           <h4 className="font-semibold text-ink-black mb-3">{t.weeklyClosuresLabel}</h4>
                           <p className="text-sm text-charcoal/60 mb-4">{t.weeklyClosuresDesc}</p>
                           
-                          {/* DEBUG INFO & RESET BUTTON */}
-                          <div className="mb-4 p-3 bg-yellow-100 border border-yellow-400 rounded-lg text-sm">
-                            <strong>🐛 CORRUPTED DATA DETECTED:</strong><br/>
-                            Database contains: [{closedWeekdays.join(', ')}] = {closedWeekdays.map(pos => 
-                              ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][pos]
-                            ).join(', ')}<br/>
-                            <strong>This is wrong!</strong> You wanted Monday closed, but the system stored Tuesday data.<br/>
-                            <button
-                              onClick={async () => {
-                                console.log('🧹 CLEARING CORRUPTED WEEKDAY DATA')
-                                setClosedWeekdays([])
-                                try {
-                                  const response = await fetch('/api/save-closed-dates', {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({ 
-                                      closedDates,
-                                      closedWeekdays: [], // Clear all weekdays
-                                      holidays 
-                                    })
-                                  })
-                                  const data = await response.json()
-                                  if (data.success) {
-                                    alert('✅ Cleared corrupted data! Now click Monday again to set it correctly.')
-                                  }
-                                } catch (error) {
-                                  console.error('Failed to clear data:', error)
-                                }
-                              }}
-                              className="mt-2 px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600"
-                            >
-                              🧹 CLEAR & FIX CORRUPTED DATA
-                            </button>
-                          </div>
+
                           
                           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                             {/* Display weekdays in Sunday-first order using getDay() values directly */}
