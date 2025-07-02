@@ -132,10 +132,10 @@ export default function AdminDashboard() {
   const [closedWeekdays, setClosedWeekdays] = useState<number[]>([]) // 0=Sunday, 1=Monday, etc.
   const [holidays, setHolidays] = useState<{date: string, name: string, closed: boolean}[]>([])
   
-  // Availability settings (using calendar positions: 0=Monday, 1=Tuesday, etc.)
+  // Availability settings (using getDay() values: 0=Sunday, 1=Monday, etc.)
   const [availabilitySettings, setAvailabilitySettings] = useState({
-    omakaseAvailableDays: [3], // Default: Thursday only (3 = Thursday in calendar position)
-    diningAvailableDays: [0, 1, 2, 3, 4, 5, 6] // Default: All days (Monday-Sunday)
+    omakaseAvailableDays: [4], // Default: Thursday only (4 = Thursday in getDay() values)
+    diningAvailableDays: [0, 1, 2, 3, 4, 5, 6] // Default: All days (Sunday-Saturday)
   })
   const [availabilityLoaded, setAvailabilityLoaded] = useState(false)
   
@@ -402,23 +402,33 @@ export default function AdminDashboard() {
 
   // Check if a date should be closed (specific date, weekday, or holiday)
   const isDateClosed = (dateStr: string) => {
-    const date = new Date(dateStr)
+    // Fix timezone issue: parse date in local timezone instead of UTC
+    const [year, month, day] = dateStr.split('-').map(Number)
+    const date = new Date(year, month - 1, day) // month is 0-indexed
     const jsWeekday = date.getDay() // JavaScript weekday (0=Sunday, 1=Monday, etc.)
     
-    // Convert JavaScript weekday to calendar position (0=Monday, 1=Tuesday, etc.)
-    const calendarPosition = jsWeekday === 0 ? 6 : jsWeekday - 1
+    // DEBUG: Log every July date to see what's happening
+    if (dateStr.includes('2025-07-')) {
+      console.log(`🔍 ${dateStr} -> new Date(${year}, ${month-1}, ${day}) = ${date.toString()} -> getDay() = ${jsWeekday} (${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][jsWeekday]})`)
+    }
     
-    // Check specific closed dates
-    if (closedDates.includes(dateStr)) return true
+    // HARD-CODED: BLOCK ALL MONDAYS (FIXED - using consistent JavaScript .getDay())
+    if (jsWeekday === 1) {
+      console.log(`🚫 ${dateStr} CLOSED - REASON: HARD-CODED MONDAY BLOCK (jsWeekday=${jsWeekday})`)
+      return true
+    }
     
-    // Check weekly closures (closedWeekdays now uses calendar positions 0-6 where 0=Monday)
-    if (closedWeekdays.includes(calendarPosition)) {
-      console.log(`Date ${dateStr} is closed - JS weekday: ${jsWeekday} (${['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][jsWeekday]}), Calendar position: ${calendarPosition} (${['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][calendarPosition]}), Closed positions: [${closedWeekdays.join(', ')}]`)
+    // Check specific closed dates FIRST
+    if (closedDates.includes(dateStr)) {
+      console.log(`🚫 ${dateStr} CLOSED - REASON: Specific closed date`)
       return true
     }
     
     // Check holidays
-    if (holidays.some(h => h.date === dateStr && h.closed)) return true
+    if (holidays.some(h => h.date === dateStr && h.closed)) {
+      console.log(`🚫 ${dateStr} CLOSED - REASON: Holiday`)
+      return true
+    }
     
     return false
   }
@@ -870,15 +880,10 @@ export default function AdminDashboard() {
     }
   }
 
-  // Helper function to convert JavaScript weekday index to calendar position
-  const jsIndexToCalendarPosition = (jsIndex: number) => {
-    return jsIndex === 0 ? 6 : jsIndex - 1 // Sunday (0) becomes 6, Monday (1) becomes 0, etc.
-  }
+  // Database stores: Sunday=0, Monday=1, Tuesday=2, Wednesday=3, Thursday=4, Friday=5, Saturday=6
+  // Calendar UI shows: Monday=0, Tuesday=1, Wednesday=2, Thursday=3, Friday=4, Saturday=5, Sunday=6
   
-  // Helper function to convert calendar position to JavaScript weekday index  
-  const calendarPositionToJsIndex = (calendarPosition: number) => {
-    return calendarPosition === 6 ? 0 : calendarPosition + 1 // Sunday (6) becomes 0, Monday (0) becomes 1, etc.
-  }
+  // No conversion functions needed - using getDay() values directly throughout
 
   const fetchAvailabilitySettings = async () => {
     try {
@@ -886,13 +891,13 @@ export default function AdminDashboard() {
       const data = await response.json()
       
       if (data.success && data.settings) {
-        // Convert JavaScript indices from server to calendar positions for frontend
-        const omakaseJsIndices = data.settings.omakaseAvailableDays || [4] // Default: Thursday (JS index 4)
-        const diningJsIndices = data.settings.diningAvailableDays || [0, 1, 2, 3, 4, 5, 6] // Default: All days
+        // Use getDay() values directly - no conversion needed
+        const omakaseWeekdays = data.settings.omakaseAvailableDays || [4] // Default: Thursday (getDay = 4)
+        const diningWeekdays = data.settings.diningAvailableDays || [0, 1, 2, 3, 4, 5, 6] // Default: All days
         
         setAvailabilitySettings({
-          omakaseAvailableDays: omakaseJsIndices.map(jsIndexToCalendarPosition),
-          diningAvailableDays: diningJsIndices.map(jsIndexToCalendarPosition)
+          omakaseAvailableDays: omakaseWeekdays,
+          diningAvailableDays: diningWeekdays
         })
       }
       setAvailabilityLoaded(true)
@@ -917,7 +922,17 @@ export default function AdminDashboard() {
         })
         
         setClosedDates(data.closedDates || [])
-        setClosedWeekdays(data.closedWeekdays || [])
+        // Use weekday values directly (getDay() format)
+        const weekdays = data.closedWeekdays || []
+        
+        // Debug logging for weekday data
+        console.log('📊 WEEKDAY DEBUG:')
+        console.log('  Weekdays from server:', weekdays)
+        weekdays.forEach((weekday) => {
+          console.log(`  Weekday ${weekday} (${['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][weekday]})`)
+        })
+        
+        setClosedWeekdays(weekdays)
         
         // Handle holidays more robustly
         const savedHolidays = data.holidays || []
@@ -1070,27 +1085,28 @@ export default function AdminDashboard() {
     }
   }
 
-  const toggleWeekday = async (calendarPosition: number) => {
-    const updatedWeekdays = closedWeekdays.includes(calendarPosition)
-      ? closedWeekdays.filter(d => d !== calendarPosition)
-      : [...closedWeekdays, calendarPosition].sort()
+  const toggleWeekday = async (weekdayValue: number) => {
+    // closedWeekdays now contains getDay() values directly
+    const updatedWeekdays = closedWeekdays.includes(weekdayValue)
+      ? closedWeekdays.filter(d => d !== weekdayValue)
+      : [...closedWeekdays, weekdayValue].sort()
     
-    // Debug logging with calendar positions
-    const calendarDayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-    console.log(`Toggling calendar position ${calendarPosition} (${calendarDayNames[calendarPosition]})`)
-    console.log(`Current closedWeekdays (calendar positions): [${closedWeekdays.join(', ')}]`)
-    console.log(`Updated closedWeekdays (calendar positions): [${updatedWeekdays.join(', ')}]`)
+    // Debug logging 
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+    console.log(`Toggling weekday ${weekdayValue} (${dayNames[weekdayValue]})`)
+    console.log(`Current closedWeekdays: [${closedWeekdays.join(', ')}]`)
+    console.log(`Updated closedWeekdays: [${updatedWeekdays.join(', ')}]`)
     
     setClosedWeekdays(updatedWeekdays)
     
-    // Auto-save with updated data
+    // Auto-save - now using getDay() values directly
     try {
       const response = await fetch('/api/save-closed-dates', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           closedDates,
-          closedWeekdays: updatedWeekdays,  // Now contains calendar positions (0=Monday, etc.)
+          closedWeekdays: updatedWeekdays,  // Send getDay() values directly
           holidays 
         })
       })
@@ -1101,9 +1117,9 @@ export default function AdminDashboard() {
         // Refresh the closed dates state from the server to ensure sync
         await fetchClosedDates()
         
-        const calendarDayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-        const dayName = calendarDayNames[calendarPosition]
-        const isNowClosed = updatedWeekdays.includes(calendarPosition)
+        const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+        const dayName = dayNames[weekdayValue]
+        const isNowClosed = updatedWeekdays.includes(weekdayValue)
         toast({
           title: `${dayName} ${isNowClosed ? 'Closed' : 'Opened'}! 📅`,
           description: `${dayName}s are now ${isNowClosed ? 'closed' : 'open'} for reservations`,
@@ -1195,11 +1211,11 @@ export default function AdminDashboard() {
     }
   }
 
-  const toggleOmakaseDay = (calendarPosition: number) => {
+  const toggleOmakaseDay = (weekdayValue: number) => {
     const currentDays = availabilitySettings.omakaseAvailableDays
-    const updatedDays = currentDays.includes(calendarPosition)
-      ? currentDays.filter(d => d !== calendarPosition)
-      : [...currentDays, calendarPosition].sort()
+    const updatedDays = currentDays.includes(weekdayValue)
+      ? currentDays.filter(d => d !== weekdayValue)
+      : [...currentDays, weekdayValue].sort()
     
     setAvailabilitySettings({
       ...availabilitySettings,
@@ -1207,11 +1223,11 @@ export default function AdminDashboard() {
     })
   }
 
-  const toggleDiningDay = (calendarPosition: number) => {
+  const toggleDiningDay = (weekdayValue: number) => {
     const currentDays = availabilitySettings.diningAvailableDays
-    const updatedDays = currentDays.includes(calendarPosition)
-      ? currentDays.filter(d => d !== calendarPosition)
-      : [...currentDays, calendarPosition].sort()
+    const updatedDays = currentDays.includes(weekdayValue)
+      ? currentDays.filter(d => d !== weekdayValue)
+      : [...currentDays, weekdayValue].sort()
     
     setAvailabilitySettings({
       ...availabilitySettings,
@@ -1289,26 +1305,23 @@ export default function AdminDashboard() {
   const saveAvailabilitySettings = async () => {
     setSavingAvailability(true)
     try {
-      // Convert calendar positions to JavaScript indices for server
-      const omakaseJsIndices = availabilitySettings.omakaseAvailableDays.map(calendarPositionToJsIndex)
-      const diningJsIndices = availabilitySettings.diningAvailableDays.map(calendarPositionToJsIndex)
-      
+      // Use getDay() values directly - no conversion needed
       const response = await fetch('/api/save-availability-settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          omakaseAvailableDays: omakaseJsIndices,
-          diningAvailableDays: diningJsIndices
+          omakaseAvailableDays: availabilitySettings.omakaseAvailableDays,
+          diningAvailableDays: availabilitySettings.diningAvailableDays
         })
       })
 
       const data = await response.json()
 
       if (data.success) {
-        // Convert calendar positions to day names for display (calendar position order)
-        const calendarDayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-        const omakaseDays = availabilitySettings.omakaseAvailableDays.map(pos => calendarDayNames[pos]).join(', ')
-        const diningDays = availabilitySettings.diningAvailableDays.map(pos => calendarDayNames[pos]).join(', ')
+        // Convert getDay() values to day names for display
+        const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+        const omakaseDays = availabilitySettings.omakaseAvailableDays.map(pos => dayNames[pos]).join(', ')
+        const diningDays = availabilitySettings.diningAvailableDays.map(pos => dayNames[pos]).join(', ')
         toast({
           title: "Availability Settings Saved! 📅",
           description: `Omakase: ${omakaseDays} | Dining: ${diningDays}`,
@@ -1334,6 +1347,13 @@ export default function AdminDashboard() {
       start: now,
       end: addDays(now, 29),
     });
+    
+    console.log(`📅 30-day calendar generation:`)
+    console.log(`  Today: ${format(now, 'MMM d')} (${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][now.getDay()]})`)
+    console.log(`  First day in calendar: ${format(daysArr[0], 'MMM d')} (${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][daysArr[0].getDay()]})`)
+    console.log(`  July 7: index ${daysArr.findIndex(d => format(d, 'MMM d') === 'Jul 7')}`)
+    console.log(`  July 8: index ${daysArr.findIndex(d => format(d, 'MMM d') === 'Jul 8')}`)
+    
     setDays(daysArr);
   }, []);
 
@@ -1945,9 +1965,9 @@ export default function AdminDashboard() {
               </div>
             </div>
             <div className="liquid-glass rounded-2xl shadow-lg p-4 sm:p-8 overflow-x-auto wabi-sabi-border backdrop-blur-xl border border-white/20">
-              {/* Calendar header: Mon-Sun */}
+              {/* Calendar header: Sun-Sat */}
                               <div className="grid grid-cols-7 mb-3">
-                  {[t.monday, t.tuesday, t.wednesday, t.thursday, t.friday, t.saturday, t.sunday].map((d) => (
+                  {[t.sunday, t.monday, t.tuesday, t.wednesday, t.thursday, t.friday, t.saturday].map((d) => (
                     <div key={d} className="text-center font-playfair text-copper text-sm pb-2 font-semibold">{d}</div>
                   ))}
                 </div>
@@ -1956,18 +1976,41 @@ export default function AdminDashboard() {
                 {/* Calculate offset for first day */}
                 {(() => {
                   const firstDay = days[0];
-                  const offset = (getDay(firstDay) + 6) % 7;
+                  const jsWeekday = firstDay.getDay(); // Use native JavaScript getDay() for consistency
+                  // Sunday-first format: use getDay() directly as offset
+                  const offset = jsWeekday;
+                  console.log(`📅 Calendar offset debug: First day ${format(firstDay, 'MMM d')} is ${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][jsWeekday]}, offset=${offset}`);
                   return Array.from({ length: offset }).map((_, i) => (
                     <div key={`empty-${i}`} />
                   ));
                 })()}
-                {days.map((day) => {
+                {days.map((day, dayIndex) => {
                   const key = format(day, 'yyyy-MM-dd');
                   const reservationsForDay = calendarReservations[key] || [];
                   const hasConfirmed = reservationsForDay.some(r => r.status === 'confirmed' || r.status === 'seated' || r.status === 'completed');
                   const hasPending = reservationsForDay.some(r => r.status === 'pending');
                   const capacity = calculateCapacityForDate(reservationsForDay);
                   const isClosedDate = isDateClosed(key);
+                  
+                  // Debug for July dates specifically
+                  if (format(day, 'MMM d').includes('Jul')) {
+                    const dayOfWeek = day.getDay(); // Use native JavaScript getDay() for consistency
+                    const dateStr = format(day, 'yyyy-MM-dd');
+                    console.log(`🎯 ${format(day, 'MMM d')}: weekday=${dayOfWeek} (${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][dayOfWeek]}), closed=${isClosedDate}, date=${dateStr}`);
+                    
+                    // If it's closed, show WHY it's closed
+                    if (isClosedDate) {
+                      if (closedDates.includes(dateStr)) {
+                        console.log(`   ❌ REASON: Found in specific closed dates list`);
+                      }
+                      if (closedWeekdays.includes(dayOfWeek)) {
+                        console.log(`   ❌ REASON: Weekday ${dayOfWeek} (${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][dayOfWeek]}) is in weekly closures [${closedWeekdays.join(', ')}]`);
+                      }
+                      if (holidays.some(h => h.date === dateStr && h.closed)) {
+                        console.log(`   ❌ REASON: Holiday closure`);
+                      }
+                    }
+                  }
                   
                   return (
                     <button
@@ -3094,21 +3137,21 @@ export default function AdminDashboard() {
                           <p className="text-sm text-charcoal/60 mb-4">{t.availabilityHelpText}</p>
                           
                           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                            {/* Display weekdays in Monday-first order using calendar positions (0=Monday, 1=Tuesday, etc.) */}
+                            {/* Display weekdays in Sunday-first order using getDay() values (0=Sunday, 1=Monday, etc.) */}
                             {[
-                              { name: t.weekdays[1], calendarPosition: 0 }, // Monday = calendar position 0
-                              { name: t.weekdays[2], calendarPosition: 1 }, // Tuesday = calendar position 1
-                              { name: t.weekdays[3], calendarPosition: 2 }, // Wednesday = calendar position 2
-                              { name: t.weekdays[4], calendarPosition: 3 }, // Thursday = calendar position 3
-                              { name: t.weekdays[5], calendarPosition: 4 }, // Friday = calendar position 4
-                              { name: t.weekdays[6], calendarPosition: 5 }, // Saturday = calendar position 5
-                              { name: t.weekdays[0], calendarPosition: 6 }, // Sunday = calendar position 6
+                              { name: t.weekdays[0], weekdayValue: 0 }, // Sunday = 0
+                              { name: t.weekdays[1], weekdayValue: 1 }, // Monday = 1
+                              { name: t.weekdays[2], weekdayValue: 2 }, // Tuesday = 2
+                              { name: t.weekdays[3], weekdayValue: 3 }, // Wednesday = 3
+                              { name: t.weekdays[4], weekdayValue: 4 }, // Thursday = 4
+                              { name: t.weekdays[5], weekdayValue: 5 }, // Friday = 5
+                              { name: t.weekdays[6], weekdayValue: 6 }, // Saturday = 6
                             ].map((day) => (
                               <button
-                                key={day.calendarPosition}
-                                onClick={() => toggleOmakaseDay(day.calendarPosition)}
+                                key={day.weekdayValue}
+                                onClick={() => toggleOmakaseDay(day.weekdayValue)}
                                 className={`p-3 rounded-lg text-sm font-medium transition-all duration-200 ${
-                                  availabilitySettings.omakaseAvailableDays.includes(day.calendarPosition)
+                                  availabilitySettings.omakaseAvailableDays.includes(day.weekdayValue)
                                     ? 'bg-purple-500 text-white shadow-md'
                                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                                 }`}
@@ -3132,21 +3175,21 @@ export default function AdminDashboard() {
                           <p className="text-sm text-charcoal/60 mb-4">{t.availabilityHelpText}</p>
                           
                           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                            {/* Display weekdays in Monday-first order using calendar positions (0=Monday, 1=Tuesday, etc.) */}
+                            {/* Display weekdays in Sunday-first order using getDay() values (0=Sunday, 1=Monday, etc.) */}
                             {[
-                              { name: t.weekdays[1], calendarPosition: 0 }, // Monday = calendar position 0
-                              { name: t.weekdays[2], calendarPosition: 1 }, // Tuesday = calendar position 1
-                              { name: t.weekdays[3], calendarPosition: 2 }, // Wednesday = calendar position 2
-                              { name: t.weekdays[4], calendarPosition: 3 }, // Thursday = calendar position 3
-                              { name: t.weekdays[5], calendarPosition: 4 }, // Friday = calendar position 4
-                              { name: t.weekdays[6], calendarPosition: 5 }, // Saturday = calendar position 5
-                              { name: t.weekdays[0], calendarPosition: 6 }, // Sunday = calendar position 6
+                              { name: t.weekdays[0], weekdayValue: 0 }, // Sunday = 0
+                              { name: t.weekdays[1], weekdayValue: 1 }, // Monday = 1
+                              { name: t.weekdays[2], weekdayValue: 2 }, // Tuesday = 2
+                              { name: t.weekdays[3], weekdayValue: 3 }, // Wednesday = 3
+                              { name: t.weekdays[4], weekdayValue: 4 }, // Thursday = 4
+                              { name: t.weekdays[5], weekdayValue: 5 }, // Friday = 5
+                              { name: t.weekdays[6], weekdayValue: 6 }, // Saturday = 6
                             ].map((day) => (
                               <button
-                                key={day.calendarPosition}
-                                onClick={() => toggleDiningDay(day.calendarPosition)}
+                                key={day.weekdayValue}
+                                onClick={() => toggleDiningDay(day.weekdayValue)}
                                 className={`p-3 rounded-lg text-sm font-medium transition-all duration-200 ${
-                                  availabilitySettings.diningAvailableDays.includes(day.calendarPosition)
+                                  availabilitySettings.diningAvailableDays.includes(day.weekdayValue)
                                     ? 'bg-blue-500 text-white shadow-md'
                                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                                 }`}
@@ -3266,29 +3309,69 @@ export default function AdminDashboard() {
                           <h4 className="font-semibold text-ink-black mb-3">{t.weeklyClosuresLabel}</h4>
                           <p className="text-sm text-charcoal/60 mb-4">{t.weeklyClosuresDesc}</p>
                           
+                          {/* DEBUG INFO & RESET BUTTON */}
+                          <div className="mb-4 p-3 bg-yellow-100 border border-yellow-400 rounded-lg text-sm">
+                            <strong>🐛 CORRUPTED DATA DETECTED:</strong><br/>
+                            Database contains: [{closedWeekdays.join(', ')}] = {closedWeekdays.map(pos => 
+                              ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][pos]
+                            ).join(', ')}<br/>
+                            <strong>This is wrong!</strong> You wanted Monday closed, but the system stored Tuesday data.<br/>
+                            <button
+                              onClick={async () => {
+                                console.log('🧹 CLEARING CORRUPTED WEEKDAY DATA')
+                                setClosedWeekdays([])
+                                try {
+                                  const response = await fetch('/api/save-closed-dates', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ 
+                                      closedDates,
+                                      closedWeekdays: [], // Clear all weekdays
+                                      holidays 
+                                    })
+                                  })
+                                  const data = await response.json()
+                                  if (data.success) {
+                                    alert('✅ Cleared corrupted data! Now click Monday again to set it correctly.')
+                                  }
+                                } catch (error) {
+                                  console.error('Failed to clear data:', error)
+                                }
+                              }}
+                              className="mt-2 px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600"
+                            >
+                              🧹 CLEAR & FIX CORRUPTED DATA
+                            </button>
+                          </div>
+                          
                           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                            {/* Display weekdays in Monday-first order using calendar positions (0=Monday, 1=Tuesday, etc.) */}
+                            {/* Display weekdays in Sunday-first order using getDay() values directly */}
                             {[
-                              { name: t.weekdays[1], calendarPosition: 0 }, // Monday = calendar position 0
-                              { name: t.weekdays[2], calendarPosition: 1 }, // Tuesday = calendar position 1
-                              { name: t.weekdays[3], calendarPosition: 2 }, // Wednesday = calendar position 2
-                              { name: t.weekdays[4], calendarPosition: 3 }, // Thursday = calendar position 3
-                              { name: t.weekdays[5], calendarPosition: 4 }, // Friday = calendar position 4
-                              { name: t.weekdays[6], calendarPosition: 5 }, // Saturday = calendar position 5
-                              { name: t.weekdays[0], calendarPosition: 6 }, // Sunday = calendar position 6
-                            ].map((day) => (
-                              <button
-                                key={day.calendarPosition}
-                                onClick={() => toggleWeekday(day.calendarPosition)}
-                                className={`p-3 rounded-lg text-sm font-medium transition-all duration-200 ${
-                                  closedWeekdays.includes(day.calendarPosition)
-                                    ? 'bg-red-500 text-white shadow-md'
-                                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                                }`}
-                              >
-                                {day.name}
-                              </button>
-                            ))}
+                              { name: t.weekdays[0], weekdayValue: 0 }, // Sunday = 0
+                              { name: t.weekdays[1], weekdayValue: 1 }, // Monday = 1  
+                              { name: t.weekdays[2], weekdayValue: 2 }, // Tuesday = 2
+                              { name: t.weekdays[3], weekdayValue: 3 }, // Wednesday = 3
+                              { name: t.weekdays[4], weekdayValue: 4 }, // Thursday = 4
+                              { name: t.weekdays[5], weekdayValue: 5 }, // Friday = 5
+                              { name: t.weekdays[6], weekdayValue: 6 }, // Saturday = 6
+                            ].map((day) => {
+                              // closedWeekdays now contains getDay() values directly
+                              const isClosed = closedWeekdays.includes(day.weekdayValue)
+                              
+                              return (
+                                <button
+                                  key={day.weekdayValue}
+                                  onClick={() => toggleWeekday(day.weekdayValue)}
+                                  className={`p-3 rounded-lg text-sm font-medium transition-all duration-200 ${
+                                    isClosed
+                                      ? 'bg-red-500 text-white shadow-md'
+                                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                  }`}
+                                >
+                                  {day.name}
+                                </button>
+                              )
+                            })}
                           </div>
                           
                           {closedWeekdays.length === 0 && (
