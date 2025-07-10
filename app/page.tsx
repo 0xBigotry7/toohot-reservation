@@ -7,6 +7,7 @@ import { nanoid } from 'nanoid'
 import { useToast } from '../hooks/use-toast'
 import Image from 'next/image'
 import TrendChart from '../components/TrendChart'
+import { useRouter } from 'next/navigation'
 
 interface Reservation {
   id: string
@@ -76,6 +77,7 @@ const CANCELLATION_REASONS = [
 // Time slots are now generated dynamically based on reservation type and party size
 
 export default function AdminDashboard() {
+  const router = useRouter()
   const [reservations, setReservations] = useState<Reservation[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -437,6 +439,7 @@ export default function AdminDashboard() {
       toohotAdmin: "TooHot Admin",
       reservationManagementDashboard: "Reservation Management Dashboard",
       newReservation: "New Reservation",
+      emailTemplates: "Email Templates",
       settings: "Settings",
       logout: "Logout",
       loadingDashboard: "Loading dashboard...",
@@ -615,6 +618,7 @@ export default function AdminDashboard() {
       toohotAdmin: "TooHot 管理后台",
       reservationManagementDashboard: "预订管理仪表板",
       newReservation: "新建预订",
+      emailTemplates: "邮件模板",
       settings: "设置",
       logout: "退出登录",
       loadingDashboard: "正在加载仪表板...",
@@ -1834,6 +1838,14 @@ export default function AdminDashboard() {
           >
             <span className="text-lg">+</span>
             <span className="text-sm sm:text-base">{t.newReservation}</span>
+            <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+          </button>
+          <button
+            onClick={() => router.push('/email-templates')}
+            className="group relative bg-gradient-to-r from-pink-600 to-rose-600 text-white px-3 sm:px-6 py-2 sm:py-3 rounded-xl hover:from-pink-700 hover:to-rose-700 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center gap-1 sm:gap-2"
+          >
+            <span className="text-lg">📧</span>
+            <span className="hidden sm:inline text-sm sm:text-base">{t.emailTemplates}</span>
             <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
           </button>
           <button
