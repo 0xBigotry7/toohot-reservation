@@ -172,6 +172,9 @@ export default function AdminDashboard() {
 
   // Settings modal ref for click outside detection
   const settingsModalRef = useRef<HTMLDivElement>(null)
+  
+  // Mobile menu state
+  const [showMobileMenu, setShowMobileMenu] = useState(false)
 
   // Helper function to parse dates in local timezone (fixes UTC/timezone bugs)
   const parseLocalDate = (dateStr: string) => {
@@ -187,7 +190,7 @@ export default function AdminDashboard() {
     }
   }, [])
 
-  // Handle click outside settings modal
+  // Handle click outside settings modal and mobile menu
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (showSettings && settingsModalRef.current && !settingsModalRef.current.contains(event.target as Node)) {
@@ -200,6 +203,23 @@ export default function AdminDashboard() {
       document.removeEventListener('mousedown', handleClickOutside)
     }
   }, [showSettings])
+
+  // Close mobile menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement
+      if (showMobileMenu && !target.closest('header')) {
+        setShowMobileMenu(false)
+      }
+    }
+
+    if (showMobileMenu) {
+      document.addEventListener('mousedown', handleClickOutside)
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside)
+      }
+    }
+  }, [showMobileMenu])
 
   // Save language preference to localStorage when changed
   const handleLanguageChange = (newLanguage: 'en' | 'zh') => {
@@ -440,6 +460,8 @@ export default function AdminDashboard() {
       reservationManagementDashboard: "Reservation Management Dashboard",
       newReservation: "New Reservation",
       emailTemplates: "Email Templates",
+      customerCRM: "Customer CRM",
+      analytics: "Analytics",
       settings: "Settings",
       logout: "Logout",
       loadingDashboard: "Loading dashboard...",
@@ -619,6 +641,8 @@ export default function AdminDashboard() {
       reservationManagementDashboard: "预订管理仪表板",
       newReservation: "新建预订",
       emailTemplates: "邮件模板",
+      customerCRM: "客户管理",
+      analytics: "数据分析",
       settings: "设置",
       logout: "退出登录",
       loadingDashboard: "正在加载仪表板...",
@@ -1812,58 +1836,129 @@ export default function AdminDashboard() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-sand-beige to-white flex flex-col">
       {/* Header */}
-      <header className="liquid-glass shadow py-4 sm:py-6 px-4 sm:px-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-0">
-        <div className="flex items-center gap-3 sm:gap-4">
-          <div className="relative">
-            <Image 
-              src="/logo_transparent.png" 
-              alt="TooHot Restaurant Logo" 
-              width={40}
-              height={40}
-              className="object-contain sm:w-12 sm:h-12"
-              priority
-            />
+      <header className="liquid-glass shadow py-4 sm:py-6 px-4 sm:px-8">
+        <div className="flex items-center justify-between">
+          {/* Brand Section */}
+          <div className="flex items-center gap-3 sm:gap-4">
+            <div className="relative">
+              <Image 
+                src="/logo_transparent.png" 
+                alt="TooHot Restaurant Logo" 
+                width={40}
+                height={40}
+                className="object-contain sm:w-12 sm:h-12"
+                priority
+              />
+            </div>
+            <div>
+              <h1 className="text-xl sm:text-2xl font-playfair text-copper font-semibold">
+                {t.toohotAdmin}
+              </h1>
+              <p className="text-xs sm:text-sm text-charcoal mt-1 hidden sm:block">{t.reservationManagementDashboard}</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-xl sm:text-2xl font-playfair text-copper font-semibold">
-              {t.toohotAdmin}
-            </h1>
-            <p className="text-xs sm:text-sm text-charcoal mt-1 hidden sm:block">{t.reservationManagementDashboard}</p>
+
+          {/* Desktop Navigation */}
+          <div className="hidden md:flex items-center gap-3">
+            <button
+              onClick={() => router.push('/email-templates')}
+              className="group relative bg-gradient-to-r from-pink-600 to-rose-600 text-white px-4 py-3 rounded-xl hover:from-pink-700 hover:to-rose-700 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center gap-2"
+            >
+              <span className="text-lg">📧</span>
+              <span className="text-sm">{t.emailTemplates}</span>
+              <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+            </button>
+            <button
+              onClick={() => router.push('/crm')}
+              className="group relative bg-gradient-to-r from-blue-600 to-cyan-600 text-white px-4 py-3 rounded-xl hover:from-blue-700 hover:to-cyan-700 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center gap-2"
+            >
+              <span className="text-lg">👥</span>
+              <span className="text-sm">{t.customerCRM}</span>
+              <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+            </button>
+            <button
+              onClick={() => router.push('/analytics')}
+              className="group relative bg-gradient-to-r from-orange-600 to-red-600 text-white px-4 py-3 rounded-xl hover:from-orange-700 hover:to-red-700 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center gap-2"
+            >
+              <span className="text-lg">📊</span>
+              <span className="text-sm">{t.analytics}</span>
+              <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+            </button>
+            <div className="w-px h-8 bg-copper/20"></div>
+            <button
+              onClick={() => setShowSettings(true)}
+              className="group relative bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-4 py-3 rounded-xl hover:from-purple-700 hover:to-indigo-700 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center gap-2"
+            >
+              <span className="text-lg">⚙️</span>
+              <span className="text-sm">{t.settings}</span>
+              <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+            </button>
           </div>
-        </div>
-        <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
+
+          {/* Mobile Menu Button */}
           <button
-            onClick={() => setShowNewReservationForm(true)}
-            className="group relative bg-gradient-to-r from-emerald-600 to-green-600 text-white px-3 sm:px-6 py-2 sm:py-3 rounded-xl hover:from-emerald-700 hover:to-green-700 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center gap-1 sm:gap-2 flex-1 sm:flex-none justify-center"
+            onClick={() => setShowMobileMenu(!showMobileMenu)}
+            className="md:hidden p-2 rounded-lg bg-white/20 hover:bg-white/30 transition-colors duration-200"
           >
-            <span className="text-lg">+</span>
-            <span className="text-sm sm:text-base">{t.newReservation}</span>
-            <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-          </button>
-          <button
-            onClick={() => router.push('/email-templates')}
-            className="group relative bg-gradient-to-r from-pink-600 to-rose-600 text-white px-3 sm:px-6 py-2 sm:py-3 rounded-xl hover:from-pink-700 hover:to-rose-700 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center gap-1 sm:gap-2"
-          >
-            <span className="text-lg">📧</span>
-            <span className="hidden sm:inline text-sm sm:text-base">{t.emailTemplates}</span>
-            <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-          </button>
-          <button
-            onClick={() => setShowSettings(true)}
-            className="group relative bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-3 sm:px-6 py-2 sm:py-3 rounded-xl hover:from-purple-700 hover:to-indigo-700 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center gap-1 sm:gap-2"
-          >
-            <span className="text-lg">⚙️</span>
-            <span className="hidden sm:inline text-sm sm:text-base">{t.settings}</span>
-            <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-          </button>
-          <button
-            onClick={logout}
-            className="group relative bg-gradient-to-r from-copper to-amber-700 text-white px-3 sm:px-6 py-2 sm:py-3 rounded-xl hover:from-copper/90 hover:to-amber-800 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
-          >
-            <span className="text-sm sm:text-base">{t.logout}</span>
-            <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+            <div className="w-6 h-6 flex flex-col justify-center items-center">
+              <div className={`w-5 h-0.5 bg-copper transition-all duration-300 ${showMobileMenu ? 'rotate-45 translate-y-1' : ''}`}></div>
+              <div className={`w-5 h-0.5 bg-copper transition-all duration-300 mt-1 ${showMobileMenu ? 'opacity-0' : ''}`}></div>
+              <div className={`w-5 h-0.5 bg-copper transition-all duration-300 mt-1 ${showMobileMenu ? '-rotate-45 -translate-y-1' : ''}`}></div>
+            </div>
           </button>
         </div>
+
+        {/* Mobile Menu */}
+        {showMobileMenu && (
+          <div className="md:hidden mt-4 pt-4 border-t border-copper/20">
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={() => {
+                  router.push('/email-templates')
+                  setShowMobileMenu(false)
+                }}
+                className="group relative bg-gradient-to-r from-pink-600 to-rose-600 text-white px-4 py-3 rounded-xl hover:from-pink-700 hover:to-rose-700 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center gap-2"
+              >
+                <span className="text-lg">📧</span>
+                <span className="text-sm">{t.emailTemplates}</span>
+                <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+              </button>
+              <button
+                onClick={() => {
+                  router.push('/crm')
+                  setShowMobileMenu(false)
+                }}
+                className="group relative bg-gradient-to-r from-blue-600 to-cyan-600 text-white px-4 py-3 rounded-xl hover:from-blue-700 hover:to-cyan-700 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center gap-2"
+              >
+                <span className="text-lg">👥</span>
+                <span className="text-sm">{t.customerCRM}</span>
+                <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+              </button>
+              <button
+                onClick={() => {
+                  router.push('/analytics')
+                  setShowMobileMenu(false)
+                }}
+                className="group relative bg-gradient-to-r from-orange-600 to-red-600 text-white px-4 py-3 rounded-xl hover:from-orange-700 hover:to-red-700 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center gap-2"
+              >
+                <span className="text-lg">📊</span>
+                <span className="text-sm">{t.analytics}</span>
+                <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+              </button>
+              <button
+                onClick={() => {
+                  setShowSettings(true)
+                  setShowMobileMenu(false)
+                }}
+                className="group relative bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-4 py-3 rounded-xl hover:from-purple-700 hover:to-indigo-700 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center gap-2"
+              >
+                <span className="text-lg">⚙️</span>
+                <span className="text-sm">{t.settings}</span>
+                <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+              </button>
+            </div>
+          </div>
+        )}
       </header>
 
       <main className="flex-1 w-full max-w-7xl mx-auto py-4 sm:py-8 px-4">
@@ -1981,6 +2076,19 @@ export default function AdminDashboard() {
 
           {/* Daily Reservations List - Right Side */}
           <div className="lg:col-span-2">
+            {/* Primary Action - New Reservation */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+              <h2 className="text-lg sm:text-xl font-playfair text-copper">{t.reservationManagementDashboard}</h2>
+              <button
+                onClick={() => setShowNewReservationForm(true)}
+                className="group relative bg-gradient-to-r from-emerald-600 to-green-600 text-white px-6 sm:px-8 py-3 sm:py-4 rounded-2xl hover:from-emerald-700 hover:to-green-700 transition-all duration-300 font-bold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center gap-2 sm:gap-3 w-full sm:w-auto justify-center text-base sm:text-lg"
+              >
+                <span className="text-xl sm:text-2xl">+</span>
+                <span>{t.newReservation}</span>
+                <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+              </button>
+            </div>
+
             {/* Search and Filter Controls - Always visible */}
             <div className="flex flex-col gap-4 mb-4 sm:mb-6">
               <div className="flex flex-col gap-4">
@@ -3288,6 +3396,29 @@ export default function AdminDashboard() {
                     )}
                   </div>
                 )}
+              </div>
+
+              {/* Logout Section */}
+              <div className="border border-copper/20 rounded-xl bg-white/30">
+                <div className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <span className="text-xl">🚪</span>
+                      <div>
+                        <h3 className="text-xl font-semibold text-ink-black">{t.logout}</h3>
+                        <p className="text-sm text-charcoal/60 mt-1">Sign out of the admin dashboard</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={logout}
+                      className="group relative bg-gradient-to-r from-copper to-amber-700 text-white px-6 py-3 rounded-xl hover:from-copper/90 hover:to-amber-800 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center gap-2"
+                    >
+                      <span className="text-lg">🚪</span>
+                      <span>{t.logout}</span>
+                      <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
