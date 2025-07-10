@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { sendCustomerConfirmation, sendRestaurantNotification } from '../../../lib/email'
 import { nanoid } from 'nanoid'
 import { getInitialReservationStatus, shouldAutoConfirm } from '../../../lib/auto-confirmation'
 
@@ -95,34 +94,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to create reservation' }, { status: 500 })
     }
     
-    // Handle email notifications based on confirmation status
+    // Log reservation status for monitoring (emails now handled by Supabase)
     if (finalStatus === 'confirmed' && confirmation_code) {
-      // Send customer confirmation email for confirmed reservations
-      try {
-        await sendCustomerConfirmation({
-          customer_name,
-          customer_email,
-          customer_phone,
-          reservation_date,
-          reservation_time,
-          party_size,
-          special_requests,
-          reservation_type: 'dining'
-        })
-        
-        if (autoConfirmed && !requestedStatus) {
-          console.log(`Auto-confirmed dining reservation - customer confirmation sent:`, data.id)
-        } else {
-          console.log(`Manual confirmed dining reservation - customer confirmation sent:`, data.id)
-        }
-      } catch (emailError) {
-        console.error('Failed to send customer confirmation email:', emailError)
-        // Don't fail the entire request if email fails, just log it
+      if (autoConfirmed && !requestedStatus) {
+        console.log(`Auto-confirmed dining reservation created (emails handled by Supabase):`, data.id)
+      } else {
+        console.log(`Manual confirmed dining reservation created (emails handled by Supabase):`, data.id)
       }
     } else if (finalStatus === 'pending') {
-      // Log that manual confirmation is needed
-      console.log(`Pending dining reservation created - owner notification needed:`, data.id)
-      // TODO: Implement owner notification email for pending reservations
+      console.log(`Pending dining reservation created (emails handled by Supabase):`, data.id)
     }
     
     return NextResponse.json({ reservation: data })
@@ -206,34 +186,12 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to update reservation' }, { status: 500 })
     }
     
-    // Send emails based on status change
+    // Log status changes for monitoring (emails now handled by Supabase)
     if (currentReservation?.status !== status) {
-      try {
-        if (status === 'confirmed') {
-          // Send confirmation email
-          await sendCustomerConfirmation({
-            customer_name,
-            customer_email,
-            customer_phone,
-            reservation_date,
-            reservation_time,
-            party_size,
-            special_requests,
-            reservation_type: 'dining'
-          })
-        } else if (status === 'cancelled') {
-          // Send cancellation email (implement if needed)
-          // await sendCancellationEmail(...)
-        }
-      } catch (emailError) {
-        console.error('Failed to send status change email:', emailError)
-      }
+      console.log(`Dining reservation ${id} status changed from ${currentReservation?.status} to ${status} (emails handled by Supabase)`)
     }
     
-    return NextResponse.json({ 
-      reservation: data,
-      emailSent: currentReservation?.status !== status 
-    })
+    return NextResponse.json({ reservation: data })
   } catch (error) {
     console.error('PUT dining reservation error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

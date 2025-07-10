@@ -1636,37 +1636,13 @@ export default function AdminDashboard() {
 
       const updatedReservation = await response.json()
 
-      // Then, send cancellation email to customer
-      try {
-        const emailResponse = await fetch('/api/send-cancellation-email', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ reservation: updatedReservation })
-        })
-
-        if (!emailResponse.ok) {
-          const emailError = await emailResponse.json()
-          console.error('Email sending failed:', emailError)
-          // Don't throw error - cancellation was successful, just email failed
-          toast({
-            title: 'Reservation Cancelled',
-            description: 'Reservation cancelled successfully, but email notification failed to send.',
-            variant: 'default',
-          })
-        } else {
-          toast({
-            title: 'Reservation Cancelled',
-            description: 'The reservation has been cancelled and the customer has been notified by email.',
-          })
-        }
-      } catch (emailError) {
-        console.error('Email sending error:', emailError)
-        toast({
-          title: 'Reservation Cancelled',
-          description: 'Reservation cancelled successfully, but email notification failed to send.',
-          variant: 'default',
-        })
-      }
+      // Log cancellation for monitoring (emails now handled by Supabase)
+      console.log(`Reservation ${reservationId} cancelled (emails handled by Supabase)`)
+      
+      toast({
+        title: 'Reservation Cancelled',
+        description: 'The reservation has been cancelled successfully.',
+      })
       
       fetchReservations()
     } catch (error: any) {
@@ -1792,48 +1768,13 @@ export default function AdminDashboard() {
 
       const updatedReservation = await response.json()
 
-      // If changing to confirmed status from any other status, send confirmation email
-      if (newStatus === 'confirmed' && previousStatus !== 'confirmed') {
-        try {
-          // Use appropriate confirmation endpoint based on reservation type
-          const confirmationEndpoint = reservationType === 'omakase' 
-            ? '/api/send-omakase-confirmation'
-            : '/api/send-dining-confirmation'
-            
-          const emailResponse = await fetch(confirmationEndpoint, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ reservation: updatedReservation })
-          })
-
-          if (!emailResponse.ok) {
-            const emailError = await emailResponse.json()
-            console.error('Confirmation email sending failed:', emailError)
-            toast({
-              title: 'Status Updated',
-              description: 'Status changed to confirmed, but confirmation email failed to send.',
-              variant: 'default',
-            })
-          } else {
-            toast({
-              title: 'Reservation Confirmed',
-              description: 'Status changed to confirmed and confirmation email sent to customer.',
-            })
-          }
-        } catch (emailError) {
-          console.error('Confirmation email error:', emailError)
-          toast({
-            title: 'Status Updated',
-            description: 'Status changed to confirmed, but confirmation email failed to send.',
-            variant: 'default',
-          })
-        }
-      } else {
-        toast({
-          title: 'Status Updated',
-          description: `Reservation status changed to ${newStatus}.`,
-        })
-      }
+      // Log status change for monitoring (emails now handled by Supabase)
+      console.log(`Reservation ${reservationId} status changed to ${newStatus} (emails handled by Supabase)`)
+      
+      toast({
+        title: 'Status Updated',
+        description: `Reservation status changed to ${newStatus}.`,
+      })
       
       fetchReservations()
     } catch (error: any) {

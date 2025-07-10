@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { nanoid } from 'nanoid';
-import { sendCustomerConfirmation } from '../../../../lib/email';
 import { format } from 'date-fns';
 import { getInitialReservationStatus, shouldAutoConfirm } from '../../../../lib/auto-confirmation';
 
@@ -129,35 +128,15 @@ export async function POST(request: NextRequest) {
       }, { status: 500 });
     }
 
-    // Handle email notifications based on confirmation status
-    let emailSent = false;
+    // Log reservation status for monitoring (emails now handled by Supabase)
     if (status === 'confirmed' && confirmation_code) {
-      // Send customer confirmation email for confirmed reservations
-      try {
-        await sendCustomerConfirmation({
-          customer_name,
-          customer_email,
-          customer_phone,
-          reservation_date: formattedDate,
-          reservation_time,
-          party_size,
-          special_requests,
-          reservation_type: type
-        });
-        emailSent = true;
-        
-        if (autoConfirmed) {
-          console.log(`Auto-confirmed ${type} reservation via MCP - customer confirmation sent:`, data.id);
-        } else {
-          console.log(`Manual confirmed ${type} reservation via MCP - customer confirmation sent:`, data.id);
-        }
-      } catch (emailError) {
-        console.error('Failed to send customer confirmation email:', emailError);
-        // Don't fail the reservation if email fails
+      if (autoConfirmed) {
+        console.log(`Auto-confirmed ${type} reservation via MCP created (emails handled by Supabase):`, data.id);
+      } else {
+        console.log(`Manual confirmed ${type} reservation via MCP created (emails handled by Supabase):`, data.id);
       }
     } else if (status === 'pending') {
-      // Log that manual confirmation is needed for MCP reservations
-      console.log(`Pending ${type} reservation created via MCP - owner notification needed:`, data.id);
+      console.log(`Pending ${type} reservation created via MCP (emails handled by Supabase):`, data.id);
     }
 
     return NextResponse.json({
@@ -177,7 +156,6 @@ export async function POST(request: NextRequest) {
       message: data.status === 'confirmed' 
         ? `Reservation confirmed for ${customer_name} on ${formattedDate} at ${reservation_time}`
         : `Reservation created for ${customer_name} on ${formattedDate} at ${reservation_time} - pending confirmation`,
-      confirmation_email_sent: emailSent,
       auto_confirmed: autoConfirmed && data.status === 'confirmed'
     });
 

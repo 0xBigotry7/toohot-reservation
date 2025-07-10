@@ -106,28 +106,8 @@ export async function POST(request: NextRequest) {
       }, { status: 500 });
     }
 
-    // Send cancellation email
-    let emailSent = false;
-    try {
-      const emailResponse = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/send-cancellation-email`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          reservation: {
-            ...updatedReservation,
-            type: reservationType
-          }
-        })
-      });
-
-      if (emailResponse.ok) {
-        emailSent = true;
-      } else {
-        console.error('Failed to send cancellation email:', await emailResponse.text());
-      }
-    } catch (emailError) {
-      console.error('Email sending error:', emailError);
-    }
+    // Log cancellation for monitoring (emails now handled by Supabase)
+    console.log(`${reservationType} reservation ${confirmation_code.toUpperCase()} cancelled via MCP (emails handled by Supabase):`, updatedReservation.id);
 
     return NextResponse.json({
       success: true,
@@ -144,7 +124,6 @@ export async function POST(request: NextRequest) {
         status: updatedReservation.status,
         cancellation_reason: updatedReservation.cancellation_reason
       },
-      cancellation_email_sent: emailSent,
       cancelled_at: new Date().toISOString()
     });
 

@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { nanoid } from 'nanoid';
-import { sendCustomerConfirmation } from '../../../lib/email';
 import { getInitialReservationStatus, shouldAutoConfirm } from '../../../lib/auto-confirmation';
 
 const supabaseAdmin = createClient(
@@ -56,39 +55,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    // Handle email notifications based on confirmation status
+    // Log reservation status for monitoring (emails now handled by Supabase)
     if (data.status === 'confirmed' && data.confirmation_code) {
-      // Send customer confirmation email for confirmed reservations
-      try {
-        await sendCustomerConfirmation({
-          customer_name: data.customer_name,
-          customer_email: data.customer_email,
-          customer_phone: data.customer_phone,
-          reservation_date: data.reservation_date,
-          reservation_time: data.reservation_time,
-          party_size: data.party_size,
-          special_requests: data.special_requests || '',
-          reservation_type: reservationType
-        });
-        
-        if (autoConfirmed && !reservationData.status) {
-          console.log(`Auto-confirmed ${reservationType} reservation - customer confirmation sent:`, data.id);
-        } else {
-          console.log(`Manual confirmed ${reservationType} reservation - customer confirmation sent:`, data.id);
-        }
-      } catch (emailError) {
-        console.error('Failed to send customer confirmation email:', emailError);
-        // Don't fail the entire request if email fails, just log it
+      if (autoConfirmed && !reservationData.status) {
+        console.log(`Auto-confirmed ${reservationType} reservation created (emails handled by Supabase):`, data.id);
+      } else {
+        console.log(`Manual confirmed ${reservationType} reservation created (emails handled by Supabase):`, data.id);
       }
     } else if (data.status === 'pending') {
-      // Send action required email to owner for pending reservations that need manual confirmation
-      try {
-        // TODO: Implement owner notification email for pending reservations
-        // This would be a new email template notifying the owner that a reservation needs confirmation
-        console.log(`Pending ${reservationType} reservation created - owner notification needed:`, data.id);
-      } catch (emailError) {
-        console.error('Failed to send owner notification email:', emailError);
-      }
+      console.log(`Pending ${reservationType} reservation created (emails handled by Supabase):`, data.id);
     }
 
     return NextResponse.json(data);
