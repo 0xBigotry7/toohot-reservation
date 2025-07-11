@@ -157,8 +157,21 @@ export default function AnalyticsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-sand-beige via-white to-sage-green flex items-center justify-center">
-        <div className="text-center">
+      <div className="min-h-screen flex items-center justify-center relative">
+        {/* Background Image */}
+        <div 
+          className="fixed inset-0 bg-cover bg-center bg-no-repeat"
+          style={{
+            backgroundImage: 'url(/background_with_logo.png)',
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            backgroundAttachment: 'fixed'
+          }}
+        />
+        {/* Background Overlay */}
+        <div className="fixed inset-0 bg-white/30 backdrop-blur-[1px]" />
+        
+        <div className="text-center relative z-10">
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-copper"></div>
           <p className="mt-4 text-charcoal/60">{t.loading}</p>
         </div>
@@ -168,8 +181,21 @@ export default function AnalyticsPage() {
 
   if (!analytics) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-sand-beige via-white to-sage-green flex items-center justify-center">
-        <div className="text-center">
+      <div className="min-h-screen flex items-center justify-center relative">
+        {/* Background Image */}
+        <div 
+          className="fixed inset-0 bg-cover bg-center bg-no-repeat"
+          style={{
+            backgroundImage: 'url(/background_with_logo.png)',
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            backgroundAttachment: 'fixed'
+          }}
+        />
+        {/* Background Overlay */}
+        <div className="fixed inset-0 bg-white/30 backdrop-blur-[1px]" />
+        
+        <div className="text-center relative z-10">
           <p className="text-charcoal/60">{t.errorLoading}</p>
         </div>
       </div>
@@ -177,11 +203,22 @@ export default function AnalyticsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-sand-beige via-white to-sage-green">
-      {/* Background Pattern */}
-      <div className="absolute inset-0 opacity-5">
-        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZGVmcz48cGF0dGVybiBpZD0iZ3JpZCIgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBwYXR0ZXJuVW5pdHM9InVzZXJTcGFjZU9uVXNlIj48cGF0aCBkPSJNIDQwIDAgTCAwIDAgMCA0MCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjEiLz48L3BhdHRlcm4+PC9kZWZzPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9InVybCgjZ3JpZCkiLz48L3N2Zz4=')] bg-repeat"></div>
-      </div>
+    <div className="min-h-screen relative">
+      {/* Background Image */}
+      <div 
+        className="fixed inset-0 bg-cover bg-center bg-no-repeat"
+        style={{
+          backgroundImage: 'url(/background_with_logo.png)',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundAttachment: 'fixed'
+        }}
+      />
+      {/* Background Overlay */}
+      <div className="fixed inset-0 bg-white/30 backdrop-blur-[1px]" />
+      
+      {/* Content */}
+      <div className="relative z-10 min-h-screen">
 
       {/* Header */}
       <header className="liquid-glass shadow py-4 sm:py-6 px-4 sm:px-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-0 mb-8">
@@ -606,6 +643,7 @@ export default function AnalyticsPage() {
             </div>
           </div>
         </div>
+      </div>
       </div>
     </div>
   )

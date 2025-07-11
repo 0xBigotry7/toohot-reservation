@@ -471,9 +471,24 @@ export default function EmailTemplatesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-sand-beige to-white flex flex-col">
-      {/* Header */}
-      <header className="liquid-glass shadow py-4 sm:py-6 px-4 sm:px-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-0">
+    <div className="min-h-screen flex flex-col relative">
+      {/* Background Image */}
+      <div 
+        className="fixed inset-0 bg-cover bg-center bg-no-repeat"
+        style={{
+          backgroundImage: 'url(/background_with_logo.png)',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundAttachment: 'fixed'
+        }}
+      />
+      {/* Background Overlay */}
+      <div className="fixed inset-0 bg-white/30 backdrop-blur-[1px]" />
+      
+      {/* Content */}
+      <div className="relative z-10 flex flex-col min-h-screen">
+        {/* Header */}
+        <header className="liquid-glass shadow py-4 sm:py-6 px-4 sm:px-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-0">
         <div className="flex items-center gap-3 sm:gap-4">
           <div className="relative">
             <Image 
@@ -823,6 +838,7 @@ export default function EmailTemplatesPage() {
           </div>
         </div>
       )}
+      </div>
     </div>
   )
 } 

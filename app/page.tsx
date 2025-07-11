@@ -8,6 +8,7 @@ import { useToast } from '../hooks/use-toast'
 import Image from 'next/image'
 import TrendChart from '../components/TrendChart'
 import { useRouter } from 'next/navigation'
+import LoginForm from '../components/LoginForm'
 
 interface Reservation {
   id: string
@@ -82,6 +83,10 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [authenticated, setAuthenticated] = useState(false)
+  const [userRole, setUserRole] = useState<'admin' | 'reservations' | null>(null)
+  const [username, setUsername] = useState<string>('')
+  const [showLogin, setShowLogin] = useState(false)
+  const [loginError, setLoginError] = useState<string>('')
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [days, setDays] = useState<Date[]>([]);
   const [calendarReservations, setCalendarReservations] = useState<{ [date: string]: Reservation[] }>({});
@@ -828,35 +833,40 @@ export default function AdminDashboard() {
 
   const { toast } = useToast();
 
-  // Improved authentication check
+  // Role-based authentication check
   useEffect(() => {
     const isAuthenticated = localStorage.getItem('admin-authenticated')
-    if (isAuthenticated === 'true') {
+    const storedRole = localStorage.getItem('user-role') as 'admin' | 'reservations' | null
+    const storedUsername = localStorage.getItem('username')
+    
+    if (isAuthenticated === 'true' && storedRole) {
       setAuthenticated(true)
+      setUserRole(storedRole)
+      setUsername(storedUsername || '')
       setLoading(false)
       return
     }
-    let attempts = 0
-    function promptPassword() {
-      const password = window.prompt('Enter admin password:')
-      const ADMIN_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD;
-      if (password === ADMIN_PASSWORD) {
-        localStorage.setItem('admin-authenticated', 'true')
-        setAuthenticated(true)
-        setLoading(false)
-      } else {
-        attempts++
-        if (attempts >= 3) {
-          alert('Too many failed attempts.')
-          setLoading(true)
-        } else {
-          alert('Invalid password')
-          promptPassword()
-        }
-      }
-    }
-    promptPassword()
+    
+    // Show login form instead of prompt
+    setShowLogin(true)
+    setLoading(false)
   }, [])
+
+  // Handle successful login
+  const handleLogin = (role: 'admin' | 'reservations') => {
+    const storedUsername = localStorage.getItem('username') || ''
+    setAuthenticated(true)
+    setUserRole(role)
+    setUsername(storedUsername)
+    setShowLogin(false)
+    setLoginError('')
+  }
+
+  // Handle login error
+  const handleLoginError = (message: string) => {
+    setLoginError(message)
+    setTimeout(() => setLoginError(''), 5000) // Clear error after 5 seconds
+  }
 
   useEffect(() => {
     if (!authenticated) return
@@ -1816,27 +1826,70 @@ export default function AdminDashboard() {
 
   const logout = () => {
     localStorage.removeItem('admin-authenticated')
-    window.location.reload()
+    localStorage.removeItem('user-role')
+    localStorage.removeItem('username')
+    setAuthenticated(false)
+    setUserRole(null)
+    setUsername('')
+    setShowLogin(true)
   }
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-sand-beige flex items-center justify-center">
-        <div className="text-center">
+      <div className="min-h-screen flex items-center justify-center relative">
+        {/* Background Image */}
+        <div 
+          className="fixed inset-0 bg-cover bg-center bg-no-repeat"
+          style={{
+            backgroundImage: 'url(/background_with_logo.png)',
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            backgroundAttachment: 'fixed'
+          }}
+        />
+        {/* Background Overlay */}
+        <div className="fixed inset-0 bg-white/30 backdrop-blur-[1px]" />
+        
+        <div className="text-center relative z-10">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-copper mx-auto"></div>
           <p className="mt-4 text-copper elegant-subtitle">{t.loadingDashboard}</p>
         </div>
       </div>
     )
   }
-  if (!authenticated) {
-    return null
+
+  if (showLogin || !authenticated) {
+    return (
+      <div className="relative">
+        <LoginForm onLogin={handleLogin} onError={handleLoginError} />
+        {loginError && (
+          <div className="fixed top-4 right-4 bg-red-500 text-white px-6 py-3 rounded-xl shadow-lg z-50">
+            {loginError}
+          </div>
+        )}
+      </div>
+    )
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-sand-beige to-white flex flex-col">
-      {/* Header */}
-      <header className="liquid-glass shadow py-4 sm:py-6 px-4 sm:px-8">
+    <div className="min-h-screen flex flex-col relative">
+      {/* Background Image */}
+      <div 
+        className="fixed inset-0 bg-cover bg-center bg-no-repeat"
+        style={{
+          backgroundImage: 'url(/background_with_logo.png)',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundAttachment: 'fixed'
+        }}
+      />
+      {/* Background Overlay */}
+      <div className="fixed inset-0 bg-white/30 backdrop-blur-[1px]" />
+      
+      {/* Content */}
+      <div className="relative z-10 flex flex-col min-h-screen">
+        {/* Header */}
+        <header className="liquid-glass shadow py-4 sm:py-6 px-4 sm:px-8">
         <div className="flex items-center justify-between">
           {/* Brand Section */}
           <div className="flex items-center gap-3 sm:gap-4">
@@ -1860,31 +1913,45 @@ export default function AdminDashboard() {
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center gap-3">
-            <button
-              onClick={() => router.push('/email-templates')}
-              className="group relative bg-gradient-to-r from-pink-600 to-rose-600 text-white px-4 py-3 rounded-xl hover:from-pink-700 hover:to-rose-700 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center gap-2"
-            >
-              <span className="text-lg">📧</span>
-              <span className="text-sm">{t.emailTemplates}</span>
-              <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-            </button>
-            <button
-              onClick={() => router.push('/crm')}
-              className="group relative bg-gradient-to-r from-blue-600 to-cyan-600 text-white px-4 py-3 rounded-xl hover:from-blue-700 hover:to-cyan-700 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center gap-2"
-            >
-              <span className="text-lg">👥</span>
-              <span className="text-sm">{t.customerCRM}</span>
-              <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-            </button>
-            <button
-              onClick={() => router.push('/analytics')}
-              className="group relative bg-gradient-to-r from-orange-600 to-red-600 text-white px-4 py-3 rounded-xl hover:from-orange-700 hover:to-red-700 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center gap-2"
-            >
-              <span className="text-lg">📊</span>
-              <span className="text-sm">{t.analytics}</span>
-              <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-            </button>
-            <div className="w-px h-8 bg-copper/20"></div>
+            {/* User Role Indicator */}
+            <div className="flex items-center gap-2 mr-4">
+              <div className={`w-3 h-3 rounded-full ${userRole === 'admin' ? 'bg-purple-500' : 'bg-green-500'}`}></div>
+              <span className="text-sm text-charcoal/70 font-medium">
+                {userRole === 'admin' ? 'Admin' : 'Manager'} | {username}
+              </span>
+            </div>
+            
+            {/* Admin-only navigation */}
+            {userRole === 'admin' && (
+              <>
+                <button
+                  onClick={() => router.push('/email-templates')}
+                  className="group relative bg-gradient-to-r from-pink-600 to-rose-600 text-white px-4 py-3 rounded-xl hover:from-pink-700 hover:to-rose-700 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center gap-2"
+                >
+                  <span className="text-lg">📧</span>
+                  <span className="text-sm">{t.emailTemplates}</span>
+                  <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                </button>
+                <button
+                  onClick={() => router.push('/crm')}
+                  className="group relative bg-gradient-to-r from-blue-600 to-cyan-600 text-white px-4 py-3 rounded-xl hover:from-blue-700 hover:to-cyan-700 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center gap-2"
+                >
+                  <span className="text-lg">👥</span>
+                  <span className="text-sm">{t.customerCRM}</span>
+                  <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                </button>
+                <button
+                  onClick={() => router.push('/analytics')}
+                  className="group relative bg-gradient-to-r from-orange-600 to-red-600 text-white px-4 py-3 rounded-xl hover:from-orange-700 hover:to-red-700 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center gap-2"
+                >
+                  <span className="text-lg">📊</span>
+                  <span className="text-sm">{t.analytics}</span>
+                  <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                </button>
+                <div className="w-px h-8 bg-copper/20"></div>
+              </>
+            )}
+            
             <button
               onClick={() => setShowSettings(true)}
               className="group relative bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-4 py-3 rounded-xl hover:from-purple-700 hover:to-indigo-700 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center gap-2"
@@ -1911,40 +1978,54 @@ export default function AdminDashboard() {
         {/* Mobile Menu */}
         {showMobileMenu && (
           <div className="md:hidden mt-4 pt-4 border-t border-copper/20">
+            {/* Mobile User Role Indicator */}
+            <div className="flex items-center gap-2 mb-4 px-2">
+              <div className={`w-3 h-3 rounded-full ${userRole === 'admin' ? 'bg-purple-500' : 'bg-green-500'}`}></div>
+              <span className="text-sm text-charcoal/70 font-medium">
+                {userRole === 'admin' ? 'Admin' : 'Manager'} | {username}
+              </span>
+            </div>
+            
             <div className="flex flex-col gap-2">
-              <button
-                onClick={() => {
-                  router.push('/email-templates')
-                  setShowMobileMenu(false)
-                }}
-                className="group relative bg-gradient-to-r from-pink-600 to-rose-600 text-white px-4 py-3 rounded-xl hover:from-pink-700 hover:to-rose-700 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center gap-2"
-              >
-                <span className="text-lg">📧</span>
-                <span className="text-sm">{t.emailTemplates}</span>
-                <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-              </button>
-              <button
-                onClick={() => {
-                  router.push('/crm')
-                  setShowMobileMenu(false)
-                }}
-                className="group relative bg-gradient-to-r from-blue-600 to-cyan-600 text-white px-4 py-3 rounded-xl hover:from-blue-700 hover:to-cyan-700 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center gap-2"
-              >
-                <span className="text-lg">👥</span>
-                <span className="text-sm">{t.customerCRM}</span>
-                <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-              </button>
-              <button
-                onClick={() => {
-                  router.push('/analytics')
-                  setShowMobileMenu(false)
-                }}
-                className="group relative bg-gradient-to-r from-orange-600 to-red-600 text-white px-4 py-3 rounded-xl hover:from-orange-700 hover:to-red-700 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center gap-2"
-              >
-                <span className="text-lg">📊</span>
-                <span className="text-sm">{t.analytics}</span>
-                <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-              </button>
+              {/* Admin-only mobile navigation */}
+              {userRole === 'admin' && (
+                <>
+                  <button
+                    onClick={() => {
+                      router.push('/email-templates')
+                      setShowMobileMenu(false)
+                    }}
+                    className="group relative bg-gradient-to-r from-pink-600 to-rose-600 text-white px-4 py-3 rounded-xl hover:from-pink-700 hover:to-rose-700 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center gap-2"
+                  >
+                    <span className="text-lg">📧</span>
+                    <span className="text-sm">{t.emailTemplates}</span>
+                    <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                  </button>
+                  <button
+                    onClick={() => {
+                      router.push('/crm')
+                      setShowMobileMenu(false)
+                    }}
+                    className="group relative bg-gradient-to-r from-blue-600 to-cyan-600 text-white px-4 py-3 rounded-xl hover:from-blue-700 hover:to-cyan-700 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center gap-2"
+                  >
+                    <span className="text-lg">👥</span>
+                    <span className="text-sm">{t.customerCRM}</span>
+                    <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                  </button>
+                  <button
+                    onClick={() => {
+                      router.push('/analytics')
+                      setShowMobileMenu(false)
+                    }}
+                    className="group relative bg-gradient-to-r from-orange-600 to-red-600 text-white px-4 py-3 rounded-xl hover:from-orange-700 hover:to-red-700 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center gap-2"
+                  >
+                    <span className="text-lg">📊</span>
+                    <span className="text-sm">{t.analytics}</span>
+                    <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                  </button>
+                </>
+              )}
+              
               <button
                 onClick={() => {
                   setShowSettings(true)
@@ -2943,8 +3024,11 @@ export default function AdminDashboard() {
                 )}
               </div>
 
-              {/* Auto-Confirmation Settings */}
-              <div className="border border-copper/20 rounded-xl bg-white/30">
+              {/* Admin-only Settings */}
+              {userRole === 'admin' && (
+                <>
+                  {/* Auto-Confirmation Settings */}
+                  <div className="border border-copper/20 rounded-xl bg-white/30">
                 <button
                   onClick={() => toggleSection('autoConfirmation')}
                   className="w-full p-4 flex items-center justify-between hover:bg-white/20 rounded-xl transition-colors"
@@ -3397,6 +3481,8 @@ export default function AdminDashboard() {
                   </div>
                 )}
               </div>
+                </>
+              )}
 
               {/* Logout Section */}
               <div className="border border-copper/20 rounded-xl bg-white/30">
@@ -3425,6 +3511,7 @@ export default function AdminDashboard() {
         </div>
       )}
 
+      </div>
     </div>
   )
 } 

@@ -58,7 +58,8 @@ export async function POST(request: NextRequest) {
       party_size,
       special_requests = '',
       notes = '',
-      status: requestedStatus // Allow manual status override if provided
+      status: requestedStatus, // Allow manual status override if provided
+      table_id
     } = body
     
     // Calculate duration based on party size
@@ -84,7 +85,8 @@ export async function POST(request: NextRequest) {
         special_requests,
         notes,
         status: finalStatus,
-        confirmation_code
+        confirmation_code,
+        table_id
       })
       .select()
       .single()
@@ -128,7 +130,8 @@ export async function PUT(request: NextRequest) {
       special_requests,
       notes,
       status,
-      cancellation_reason
+      cancellation_reason,
+      table_id
     } = body
     
     // Calculate duration based on party size
@@ -165,7 +168,8 @@ export async function PUT(request: NextRequest) {
       special_requests,
       notes,
       status,
-      confirmation_code
+      confirmation_code,
+      table_id
     }
     
     if (status === 'cancelled') {
