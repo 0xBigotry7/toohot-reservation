@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useRef } from 'react'
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday, addDays, getDay, startOfWeek } from 'date-fns'
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday, addDays, getDay, startOfWeek, addMonths, subMonths } from 'date-fns'
 import { supabase } from '../lib/supabase'
 import { nanoid } from 'nanoid'
 import { useToast } from '../hooks/use-toast'
@@ -89,6 +89,7 @@ export default function AdminDashboard() {
   const [loginError, setLoginError] = useState<string>('')
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [days, setDays] = useState<Date[]>([]);
+  const [currentViewMonth, setCurrentViewMonth] = useState<Date>(new Date());
   const [calendarReservations, setCalendarReservations] = useState<{ [date: string]: Reservation[] }>({});
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
@@ -433,6 +434,29 @@ export default function AdminDashboard() {
     return chineseNewYearDates[year] || `${year}-02-01`
   }
 
+  // Calendar navigation functions
+  const goToPreviousMonth = () => {
+    const newMonth = subMonths(currentViewMonth, 1);
+    // Allow viewing up to 6 months back for historical data
+    const earliestAllowed = subMonths(new Date(), 6);
+    if (newMonth >= startOfMonth(earliestAllowed)) {
+      setCurrentViewMonth(newMonth);
+    }
+  };
+
+  const goToNextMonth = () => {
+    const newMonth = addMonths(currentViewMonth, 1);
+    // Allow viewing up to 6 months ahead for planning purposes
+    const latestAllowed = addMonths(new Date(), 6);
+    if (newMonth <= startOfMonth(latestAllowed)) {
+      setCurrentViewMonth(newMonth);
+    }
+  };
+
+  const goToToday = () => {
+    setCurrentViewMonth(new Date());
+  };
+
   // Check if a date should be closed (specific date, weekday, or holiday)
   const isDateClosed = (dateStr: string) => {
     // Fix timezone issue: parse date in local timezone instead of UTC
@@ -472,9 +496,10 @@ export default function AdminDashboard() {
       loadingDashboard: "Loading dashboard...",
       
       // Calendar & Overview
-      daysOverview: "30 Days Overview",
+      daysOverview: "Calendar Overview",
       calendarConfirmed: "Confirmed",
       actionRequired: "Action Required",
+      calendarToday: "Today",
       selectDateToView: "Select a date to view reservations",
       noReservationsForDate: "No reservations for this date",
       
@@ -653,9 +678,10 @@ export default function AdminDashboard() {
       loadingDashboard: "正在加载仪表板...",
       
       // Calendar & Overview
-      daysOverview: "30天概览",
+      daysOverview: "日历概览",
       calendarConfirmed: "已确认",
       actionRequired: "需要操作",
+      calendarToday: "今天",
       selectDateToView: "选择日期查看预订",
       noReservationsForDate: "此日期无预订",
       
@@ -1353,36 +1379,38 @@ export default function AdminDashboard() {
   }
 
   useEffect(() => {
-    // Generate next 30 days from today
-    const now = new Date();
+    // Generate days for the current viewing month
+    const monthStart = startOfMonth(currentViewMonth);
+    const monthEnd = endOfMonth(currentViewMonth);
     const daysArr = eachDayOfInterval({
-      start: now,
-      end: addDays(now, 29),
+      start: monthStart,
+      end: monthEnd,
     });
     
     setDays(daysArr);
-  }, []);
+  }, [currentViewMonth]);
 
   const fetchReservations = async () => {
     setLoading(true);
     setError(null);
     try {
       const now = new Date();
-      const end = addDays(now, 29);
+      const start = addDays(now, -180); // Fetch 6 months back for historical data
+      const end = addDays(now, 180); // Fetch 6 months ahead for full navigation range
       
       // Fetch both omakase and dining reservations
       const [omakaseResponse, diningResponse] = await Promise.all([
         supabase()
           .from('omakase_reservations')
           .select('*')
-          .gte('reservation_date', format(now, 'yyyy-MM-dd'))
+          .gte('reservation_date', format(start, 'yyyy-MM-dd'))
           .lte('reservation_date', format(end, 'yyyy-MM-dd'))
           .order('reservation_date', { ascending: true })
           .order('reservation_time', { ascending: true }),
         supabase()
           .from('dining_reservations')
           .select('*')
-          .gte('reservation_date', format(now, 'yyyy-MM-dd'))
+          .gte('reservation_date', format(start, 'yyyy-MM-dd'))
           .lte('reservation_date', format(end, 'yyyy-MM-dd'))
           .order('reservation_date', { ascending: true })
           .order('reservation_time', { ascending: true })
@@ -2048,14 +2076,43 @@ export default function AdminDashboard() {
           
           {/* Calendar View - Left Side */}
           <div className="lg:col-span-1">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-6">
-              <h2 className="text-lg sm:text-xl font-playfair text-copper mb-2 sm:mb-0">{t.daysOverview}</h2>
-              <div className="flex items-center gap-2 text-xs text-charcoal/60">
+            <div className="flex flex-col mb-4 sm:mb-6">
+              {/* Calendar navigation header */}
+              <div className="flex items-center justify-between mb-4">
+                <button
+                  onClick={goToPreviousMonth}
+                  disabled={subMonths(currentViewMonth, 1) < startOfMonth(subMonths(new Date(), 6))}
+                  className="p-2 rounded-lg bg-sand-beige/60 hover:bg-sand-beige transition-colors text-copper disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  ←
+                </button>
+                <div className="flex flex-col items-center">
+                  <h2 className="text-lg sm:text-xl font-playfair text-copper">
+                    {format(currentViewMonth, 'MMMM yyyy')}
+                  </h2>
+                  <button
+                    onClick={goToToday}
+                    className="text-xs text-copper/70 hover:text-copper transition-colors"
+                  >
+                    {t.calendarToday}
+                  </button>
+                </div>
+                <button
+                  onClick={goToNextMonth}
+                  disabled={addMonths(currentViewMonth, 1) > startOfMonth(addMonths(new Date(), 6))}
+                  className="p-2 rounded-lg bg-sand-beige/60 hover:bg-sand-beige transition-colors text-copper disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  →
+                </button>
+              </div>
+              
+              {/* Legend */}
+              <div className="flex items-center justify-center gap-4 text-xs text-charcoal/60">
                 <div className="flex items-center gap-1">
                   <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                   <span>{t.calendarConfirmed}</span>
                 </div>
-                <div className="flex items-center gap-1 ml-3">
+                <div className="flex items-center gap-1">
                   <div className="w-2 h-2 bg-red-500 rounded-full"></div>
                   <span>{t.actionRequired}</span>
                 </div>
@@ -2087,63 +2144,91 @@ export default function AdminDashboard() {
                   const hasPending = reservationsForDay.some(r => r.status === 'pending');
                   const capacity = calculateCapacityForDate(reservationsForDay);
                   const isClosedDate = isDateClosed(key);
+                  const isPastDate = day < new Date(new Date().setHours(0, 0, 0, 0));
                   
 
                   
                   return (
                     <button
                       key={key}
-                      className={`relative flex flex-col items-center justify-center p-2 sm:p-3 rounded-xl border transition-all text-xs sm:text-sm hover:bg-sand-beige/40 cursor-pointer min-h-[60px] sm:min-h-[80px] overflow-hidden
-                        ${isClosedDate 
-                          ? 'border-red-400 bg-red-100/60 shadow-red-200/50 shadow-md' 
+                      className={`relative flex flex-col items-center justify-center p-2 sm:p-3 rounded-xl border transition-all text-xs sm:text-sm min-h-[60px] sm:min-h-[80px] overflow-hidden
+                        ${isPastDate 
+                          ? 'border-gray-300 bg-gray-100/60 cursor-default opacity-60' 
+                          : isClosedDate 
+                          ? 'border-red-400 bg-red-100/60 shadow-red-200/50 shadow-md hover:bg-sand-beige/40 cursor-pointer' 
                           : isToday(day) 
-                          ? 'border-copper bg-sand-beige/60 shadow' 
-                          : 'border-transparent bg-white/40'}
+                          ? 'border-copper bg-sand-beige/60 shadow hover:bg-sand-beige/40 cursor-pointer' 
+                          : 'border-transparent bg-white/40 hover:bg-sand-beige/40 cursor-pointer'}
                         ${selectedDate && isSameDay(day, selectedDate) ? 'ring-2 ring-copper' : ''}
-                        ${isClosedDate ? 'opacity-80' : ''}
+                        ${isClosedDate && !isPastDate ? 'opacity-80' : ''}
                       `}
-                      onClick={() => setSelectedDate(day)}
-                      title={isClosedDate ? 'This date is closed for reservations' : `${capacity.totalUsed}/${capacity.totalCapacity} seats (${capacity.percentage.toFixed(0)}% full)`}
+                      onClick={() => !isPastDate && setSelectedDate(day)}
+                      title={isPastDate 
+                        ? 'Past date' 
+                        : isClosedDate 
+                        ? 'This date is closed for reservations' 
+                        : `${capacity.totalUsed}/${capacity.totalCapacity} seats (${capacity.percentage.toFixed(0)}% full)`}
                     >
-                      {/* Water Fill Background using theme copper colors */}
-                      <div 
-                        className="absolute inset-0 bg-gradient-to-t from-copper/40 via-copper/30 to-copper/10 transition-all duration-700 ease-out rounded-xl"
-                        style={{
-                          transform: `translateY(${100 - capacity.percentage}%)`,
-                          opacity: capacity.percentage > 0 ? 0.8 : 0
-                        }}
-                      />
-                      
-                      {/* Enhanced fill for high capacity */}
-                      {capacity.percentage > 80 && (
-                        <div className="absolute inset-0 bg-gradient-to-t from-amber-600/50 via-amber-500/40 to-amber-400/20 animate-pulse rounded-xl" />
-                      )}
-                      
-                      {/* Over capacity warning */}
-                      {capacity.percentage >= 100 && (
-                        <div className="absolute inset-0 bg-gradient-to-t from-red-500/60 via-red-400/50 to-red-300/30 animate-pulse rounded-xl" />
+                      {/* Water Fill Background using theme copper colors - only for future dates */}
+                      {!isPastDate && (
+                        <>
+                          <div 
+                            className="absolute inset-0 bg-gradient-to-t from-copper/40 via-copper/30 to-copper/10 transition-all duration-700 ease-out rounded-xl"
+                            style={{
+                              transform: `translateY(${100 - capacity.percentage}%)`,
+                              opacity: capacity.percentage > 0 ? 0.8 : 0
+                            }}
+                          />
+                          
+                          {/* Enhanced fill for high capacity */}
+                          {capacity.percentage > 80 && (
+                            <div className="absolute inset-0 bg-gradient-to-t from-amber-600/50 via-amber-500/40 to-amber-400/20 animate-pulse rounded-xl" />
+                          )}
+                          
+                          {/* Over capacity warning */}
+                          {capacity.percentage >= 100 && (
+                            <div className="absolute inset-0 bg-gradient-to-t from-red-500/60 via-red-400/50 to-red-300/30 animate-pulse rounded-xl" />
+                          )}
+                        </>
                       )}
                       
                       {/* Content - positioned above the water fill */}
                       <div className="relative z-10 flex flex-col items-center justify-center">
-                        <span className={`font-playfair text-lg font-semibold ${isClosedDate ? 'text-red-700' : 'text-ink-black'}`}>
+                        <span className={`font-playfair text-lg font-semibold ${
+                          isPastDate ? 'text-gray-500' 
+                          : isClosedDate ? 'text-red-700' 
+                          : 'text-ink-black'
+                        }`}>
                           {format(day, 'd')}
                         </span>
                         
+
+                        
                         {/* Closed date indicator */}
-                        {isClosedDate && (
+                        {isClosedDate && !isPastDate && (
                           <div className="text-red-600 text-lg mt-1">
                             🚫
                           </div>
                         )}
                         
-                        {/* Simple capacity info - only show if not closed */}
-                        {!isClosedDate && (
+                        {/* Simple capacity info - only show if not closed and not past */}
+                        {!isClosedDate && !isPastDate && (
                           <div className="flex items-center gap-1 mt-1">
                             <span className="text-xs text-copper font-medium">{reservationsForDay.length}</span>
                             <div className="flex items-center gap-0.5">
                               {hasPending && <div className="w-2 h-2 bg-red-500 rounded-full"></div>}
                               {hasConfirmed && <div className="w-2 h-2 bg-green-500 rounded-full"></div>}
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* For past dates, show reservation count if any */}
+                        {isPastDate && reservationsForDay.length > 0 && (
+                          <div className="flex items-center gap-1 mt-1">
+                            <span className="text-xs text-gray-500 font-medium">{reservationsForDay.length}</span>
+                            <div className="flex items-center gap-0.5">
+                              {hasPending && <div className="w-2 h-2 bg-gray-400 rounded-full"></div>}
+                              {hasConfirmed && <div className="w-2 h-2 bg-gray-500 rounded-full"></div>}
                             </div>
                           </div>
                         )}
