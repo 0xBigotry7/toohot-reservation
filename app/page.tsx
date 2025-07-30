@@ -2214,7 +2214,7 @@ export default function AdminDashboard() {
                         {/* Simple capacity info - only show if not closed and not past */}
                         {!isClosedDate && !isPastDate && (
                           <div className="flex items-center gap-1 mt-1">
-                            <span className="text-xs text-copper font-medium">{reservationsForDay.length}</span>
+                            <span className="text-xs text-copper font-medium">{reservationsForDay.filter(r => r.status !== 'cancelled').length}</span>
                             <div className="flex items-center gap-0.5">
                               {hasPending && <div className="w-2 h-2 bg-red-500 rounded-full"></div>}
                               {hasConfirmed && <div className="w-2 h-2 bg-green-500 rounded-full"></div>}
@@ -2223,9 +2223,9 @@ export default function AdminDashboard() {
                         )}
                         
                         {/* For past dates, show reservation count if any */}
-                        {isPastDate && reservationsForDay.length > 0 && (
+                        {isPastDate && reservationsForDay.filter(r => r.status !== 'cancelled').length > 0 && (
                           <div className="flex items-center gap-1 mt-1">
-                            <span className="text-xs text-gray-500 font-medium">{reservationsForDay.length}</span>
+                            <span className="text-xs text-gray-500 font-medium">{reservationsForDay.filter(r => r.status !== 'cancelled').length}</span>
                             <div className="flex items-center gap-0.5">
                               {hasPending && <div className="w-2 h-2 bg-gray-400 rounded-full"></div>}
                               {hasConfirmed && <div className="w-2 h-2 bg-gray-500 rounded-full"></div>}
