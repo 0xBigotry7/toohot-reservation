@@ -26,6 +26,14 @@ interface Reservation {
   notes?: string
   type: 'omakase' | 'dining'
   duration_minutes?: number
+  // Payment fields for omakase
+  payment_status?: string
+  prepayment_amount?: number
+  prepayment_base_price?: number
+  prepayment_tax_amount?: number
+  prepaid_at?: string
+  stripe_charge_id?: string
+  cancellation_refund_percentage?: number
 }
 
 interface EditReservation {
@@ -181,6 +189,20 @@ export default function AdminDashboard() {
   
   // Mobile menu state
   const [showMobileMenu, setShowMobileMenu] = useState(false)
+  
+  // Refund modal state
+  const [showRefundModal, setShowRefundModal] = useState(false)
+  const [refundingReservation, setRefundingReservation] = useState<Reservation | null>(null)
+  const [refundType, setRefundType] = useState<'full' | 'partial'>('full')
+  const [refundPercentage, setRefundPercentage] = useState(100)
+  const [refundReason, setRefundReason] = useState('')
+  const [processingRefund, setProcessingRefund] = useState(false)
+  
+  // Cancellation modal state
+  const [showCancelModal, setShowCancelModal] = useState(false)
+  const [cancellingReservation, setCancellingReservation] = useState<Reservation | null>(null)
+  const [cancellationReason, setCancellationReason] = useState('')
+  const [processingCancellation, setProcessingCancellation] = useState(false)
 
   // Helper function to parse dates in local timezone (fixes UTC/timezone bugs)
   const parseLocalDate = (dateStr: string) => {
@@ -663,7 +685,44 @@ export default function AdminDashboard() {
       thursday: "Thu",
       friday: "Fri",
       saturday: "Sat",
-      sunday: "Sun"
+      sunday: "Sun",
+      
+      // Payment fields
+      paymentStatus: "Payment Status",
+      paymentAmount: "Payment Amount",
+      paymentDate: "Payment Date",
+      refundAmount: "Refund Amount",
+      refundButton: "Process Refund",
+      refundHistory: "Refund History",
+      unpaid: "Unpaid",
+      paid: "Paid",
+      refunded: "Refunded",
+      partiallyRefunded: "Partially Refunded",
+      failed: "Failed",
+      refundModalTitle: "Process Refund",
+      refundTypeLabel: "Refund Type",
+      fullRefund: "Full Refund",
+      partialRefund: "Partial Refund",
+      refundPercentageLabel: "Refund Percentage",
+      refundReasonLabel: "Refund Reason",
+      processingRefund: "Processing refund...",
+      refundSuccessTitle: "Refund Processed Successfully! 💸",
+      refundSuccessDesc: "The customer will receive their refund within 5-10 business days",
+      refundFailedTitle: "Refund Failed ❌",
+      refundFailedDesc: "Please check the payment details and try again",
+      
+      // Cancellation Modal
+      cancelModalTitle: "Confirm Cancellation",
+      cancelModalWarning: "Warning: This action cannot be undone",
+      refundPolicyTitle: "Refund Policy",
+      automaticRefundNote: "Automatic refund will be processed based on policy:",
+      hoursBeforeReservation: "Hours before reservation",
+      refundPercentageText: "refund",
+      noRefundWarning: "No refund will be issued (less than 24 hours notice)",
+      selectCancellationReason: "Select cancellation reason",
+      processingCancellation: "Processing cancellation...",
+      confirmCancel: "Confirm Cancellation",
+      cancelButton: "Cancel"
     },
     zh: {
       // Header & Navigation
@@ -845,7 +904,44 @@ export default function AdminDashboard() {
       thursday: "周四",
       friday: "周五",
       saturday: "周六",
-      sunday: "周日"
+      sunday: "周日",
+      
+      // Payment fields
+      paymentStatus: "支付状态",
+      paymentAmount: "支付金额",
+      paymentDate: "支付日期",
+      refundAmount: "退款金额",
+      refundButton: "处理退款",
+      refundHistory: "退款历史",
+      unpaid: "未支付",
+      paid: "已支付",
+      refunded: "已退款",
+      partiallyRefunded: "部分退款",
+      failed: "失败",
+      refundModalTitle: "处理退款",
+      refundTypeLabel: "退款类型",
+      fullRefund: "全额退款",
+      partialRefund: "部分退款",
+      refundPercentageLabel: "退款百分比",
+      refundReasonLabel: "退款原因",
+      processingRefund: "正在处理退款...",
+      refundSuccessTitle: "退款处理成功！💸",
+      refundSuccessDesc: "客户将在5-10个工作日内收到退款",
+      refundFailedTitle: "退款失败 ❌",
+      refundFailedDesc: "请检查支付详情并重试",
+      
+      // Cancellation Modal
+      cancelModalTitle: "确认取消",
+      cancelModalWarning: "警告：此操作无法撤销",
+      refundPolicyTitle: "退款政策",
+      automaticRefundNote: "将根据政策自动处理退款：",
+      hoursBeforeReservation: "预订前小时数",
+      refundPercentageText: "退款",
+      noRefundWarning: "不会退款（少于24小时通知）",
+      selectCancellationReason: "选择取消原因",
+      processingCancellation: "正在处理取消...",
+      confirmCancel: "确认取消",
+      cancelButton: "取消"
     }
   }
 
@@ -1671,6 +1767,23 @@ export default function AdminDashboard() {
     }
   }
 
+  const processCancellation = async () => {
+    if (!cancellingReservation || !cancellationReason.trim()) return
+
+    setProcessingCancellation(true)
+    
+    try {
+      await handleCancelReservation(cancellingReservation.id, cancellationReason.trim())
+      setShowCancelModal(false)
+      setCancellingReservation(null)
+      setCancellationReason('')
+    } catch (error) {
+      // Error is already handled in handleCancelReservation
+    } finally {
+      setProcessingCancellation(false)
+    }
+  }
+
   const handleCancelReservation = async (reservationId: string, reason: string) => {
     try {
       // Find the reservation to get its type
@@ -1717,6 +1830,96 @@ export default function AdminDashboard() {
         description: error.message || 'Failed to cancel the reservation. Please try again.',
         variant: 'destructive',
       })
+    }
+  }
+
+  const handleRefund = (reservation: Reservation) => {
+    setRefundingReservation(reservation)
+    setRefundType('full')
+    setRefundPercentage(100)
+    setRefundReason('')
+    setShowRefundModal(true)
+  }
+
+  const processRefund = async () => {
+    if (!refundingReservation || !refundingReservation.stripe_charge_id) return
+
+    setProcessingRefund(true)
+    
+    try {
+      // Calculate refund amount considering already refunded amounts
+      let refundAmount: number;
+      let actualRefundPercentage: number;
+      
+      if (refundingReservation.payment_status === 'partially_refunded' && refundingReservation.cancellation_refund_percentage) {
+        const remainingPercentage = 100 - refundingReservation.cancellation_refund_percentage;
+        if (refundType === 'full') {
+          refundAmount = Math.round((refundingReservation.prepayment_amount! * remainingPercentage) / 100);
+          actualRefundPercentage = remainingPercentage;
+        } else {
+          refundAmount = Math.round((refundingReservation.prepayment_amount! * remainingPercentage * refundPercentage) / 10000);
+          actualRefundPercentage = Math.round((remainingPercentage * refundPercentage) / 100);
+        }
+      } else {
+        if (refundType === 'full') {
+          refundAmount = refundingReservation.prepayment_amount!;
+          actualRefundPercentage = 100;
+        } else {
+          refundAmount = Math.round((refundingReservation.prepayment_amount! * refundPercentage) / 100);
+          actualRefundPercentage = refundPercentage;
+        }
+      }
+
+      const response = await fetch('/api/stripe/process-refund', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          reservationId: refundingReservation.id,
+          chargeId: refundingReservation.stripe_charge_id,
+          amount: refundAmount,
+          reason: refundReason || 'Admin initiated refund',
+          refundPercentage: actualRefundPercentage
+        })
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Refund failed')
+      }
+
+      const result = await response.json()
+
+      toast({
+        title: t.refundSuccessTitle,
+        description: t.refundSuccessDesc,
+      })
+
+      // Update local reservation state
+      setReservations(prev => prev.map(r => 
+        r.id === refundingReservation.id 
+          ? { 
+              ...r, 
+              payment_status: actualRefundPercentage === 100 || 
+                (r.cancellation_refund_percentage && r.cancellation_refund_percentage + actualRefundPercentage >= 100) 
+                ? 'refunded' 
+                : 'partially_refunded',
+              cancellation_refund_percentage: r.cancellation_refund_percentage 
+                ? r.cancellation_refund_percentage + actualRefundPercentage 
+                : actualRefundPercentage
+            }
+          : r
+      ))
+
+      setShowRefundModal(false)
+      setRefundingReservation(null)
+    } catch (error: any) {
+      toast({
+        title: t.refundFailedTitle,
+        description: error.message || t.refundFailedDesc,
+        variant: 'destructive',
+      })
+    } finally {
+      setProcessingRefund(false)
     }
   }
 
@@ -1837,10 +2040,25 @@ export default function AdminDashboard() {
       // Log status change for monitoring (emails now handled by Supabase)
       console.log(`Reservation ${reservationId} status changed to ${newStatus} (emails handled by Supabase)`)
       
-      toast({
-        title: 'Status Updated',
-        description: `Reservation status changed to ${newStatus}.`,
-      })
+      // Check if automatic refund was processed
+      if (updatedReservation.type === 'omakase' && 
+          newStatus === 'cancelled' && 
+          updatedReservation.payment_status && 
+          (updatedReservation.payment_status === 'refunded' || updatedReservation.payment_status === 'partially_refunded')) {
+        
+        const refundPercentage = updatedReservation.cancellation_refund_percentage || 0
+        toast({
+          title: t.statusUpdatedTitle,
+          description: refundPercentage > 0 
+            ? `Reservation cancelled with ${refundPercentage}% automatic refund based on cancellation policy`
+            : 'Reservation cancelled. No refund due based on cancellation policy.',
+        })
+      } else {
+        toast({
+          title: t.statusUpdatedTitle,
+          description: `Reservation status changed to ${getStatusLabel(newStatus)}.`,
+        })
+      }
       
       fetchReservations()
     } catch (error: any) {
@@ -2378,13 +2596,9 @@ export default function AdminDashboard() {
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
-                                const reason = window.prompt(
-                                  'Please provide a reason for cancellation:\n\nCommon reasons:\n• ' + CANCELLATION_REASONS.join('\n• '),
-                                  CANCELLATION_REASONS[0]
-                                )
-                                if (reason && reason.trim()) {
-                                  handleCancelReservation(reservation.id, reason.trim())
-                                }
+                                setCancellingReservation(reservation);
+                                setCancellationReason('');
+                                setShowCancelModal(true);
                               }}
                               className="group relative liquid-glass bg-gradient-to-r from-red-400/80 to-rose-500/80 text-white px-4 py-2 rounded-xl hover:from-red-500 hover:to-rose-600 transition-all duration-300 font-semibold text-sm shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center gap-1 backdrop-blur-sm border border-white/20"
                             >
@@ -2430,7 +2644,59 @@ export default function AdminDashboard() {
                             <div>
                               <span className="font-semibold text-copper">{t.created}:</span> {format(new Date(reservation.created_at), 'MMM d, yyyy')}
                             </div>
+                            {/* Payment Information for Omakase */}
+                            {reservation.type === 'omakase' && reservation.payment_status && (
+                              <>
+                                <div>
+                                  <span className="font-semibold text-copper">{t.paymentStatus}:</span>{' '}
+                                  <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                    reservation.payment_status === 'paid' ? 'bg-green-100 text-green-800' :
+                                    reservation.payment_status === 'refunded' ? 'bg-blue-100 text-blue-800' :
+                                    reservation.payment_status === 'partially_refunded' ? 'bg-yellow-100 text-yellow-800' :
+                                    reservation.payment_status === 'failed' ? 'bg-red-100 text-red-800' :
+                                    'bg-gray-100 text-gray-800'
+                                  }`}>
+                                    {t[reservation.payment_status as keyof typeof t] || reservation.payment_status}
+                                  </span>
+                                </div>
+                                {reservation.prepayment_amount && (
+                                  <div>
+                                    <span className="font-semibold text-copper">{t.paymentAmount}:</span> ${(reservation.prepayment_amount / 100).toFixed(2)}
+                                    {reservation.prepayment_tax_amount && (
+                                      <span className="text-xs text-gray-600 ml-2">
+                                        (Base: ${(reservation.prepayment_base_price! / 100).toFixed(2)} + Tax: ${(reservation.prepayment_tax_amount / 100).toFixed(2)})
+                                      </span>
+                                    )}
+                                  </div>
+                                )}
+                                {reservation.prepaid_at && (
+                                  <div>
+                                    <span className="font-semibold text-copper">{t.paymentDate}:</span> {format(new Date(reservation.prepaid_at), 'MMM d, yyyy h:mm a')}
+                                  </div>
+                                )}
+                              </>
+                            )}
                           </div>
+
+                          {/* Refund Button for Paid Omakase Reservations */}
+                          {reservation.type === 'omakase' && 
+                           reservation.payment_status === 'paid' && 
+                           reservation.stripe_charge_id &&
+                           (reservation.status === 'cancelled' || reservation.status === 'no-show') && (
+                            <div className="mt-4 flex justify-end">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleRefund(reservation);
+                                }}
+                                className="group relative liquid-glass bg-gradient-to-r from-blue-500/80 to-indigo-600/80 text-white px-4 py-2 rounded-xl hover:from-blue-600 hover:to-indigo-700 transition-all duration-300 font-semibold text-sm shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center gap-2 backdrop-blur-sm border border-white/20"
+                              >
+                                <span>💸</span>
+                                <span>{t.refundButton}</span>
+                                <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-sand-beige/20 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                              </button>
+                            </div>
+                          )}
 
                           {reservation.special_requests && (
                             <div className="mt-3 p-3 bg-white/30 rounded-lg">
@@ -2541,13 +2807,9 @@ export default function AdminDashboard() {
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  const reason = window.prompt(
-                                    'Please provide a reason for cancellation:\n\nCommon reasons:\n• ' + CANCELLATION_REASONS.join('\n• '),
-                                    CANCELLATION_REASONS[0]
-                                  )
-                                  if (reason && reason.trim()) {
-                                    handleCancelReservation(reservation.id, reason.trim())
-                                  }
+                                  setCancellingReservation(reservation);
+                                  setCancellationReason('');
+                                  setShowCancelModal(true);
                                 }}
                                 className="group relative liquid-glass bg-gradient-to-r from-red-400/80 to-rose-500/80 text-white px-4 py-2 rounded-xl hover:from-red-500 hover:to-rose-600 transition-all duration-300 font-semibold text-sm shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center gap-1 backdrop-blur-sm border border-white/20"
                               >
@@ -2593,7 +2855,59 @@ export default function AdminDashboard() {
                               <div>
                                 <span className="font-semibold text-copper">{t.created}:</span> {format(new Date(reservation.created_at), 'MMM d, yyyy')}
                               </div>
+                              {/* Payment Information for Omakase */}
+                              {reservation.type === 'omakase' && reservation.payment_status && (
+                                <>
+                                  <div>
+                                    <span className="font-semibold text-copper">{t.paymentStatus}:</span>{' '}
+                                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                      reservation.payment_status === 'paid' ? 'bg-green-100 text-green-800' :
+                                      reservation.payment_status === 'refunded' ? 'bg-blue-100 text-blue-800' :
+                                      reservation.payment_status === 'partially_refunded' ? 'bg-yellow-100 text-yellow-800' :
+                                      reservation.payment_status === 'failed' ? 'bg-red-100 text-red-800' :
+                                      'bg-gray-100 text-gray-800'
+                                    }`}>
+                                      {t[reservation.payment_status as keyof typeof t] || reservation.payment_status}
+                                    </span>
+                                  </div>
+                                  {reservation.prepayment_amount && (
+                                    <div>
+                                      <span className="font-semibold text-copper">{t.paymentAmount}:</span> ${(reservation.prepayment_amount / 100).toFixed(2)}
+                                      {reservation.prepayment_tax_amount && (
+                                        <span className="text-xs text-gray-600 ml-2">
+                                          (Base: ${(reservation.prepayment_base_price! / 100).toFixed(2)} + Tax: ${(reservation.prepayment_tax_amount / 100).toFixed(2)})
+                                        </span>
+                                      )}
+                                    </div>
+                                  )}
+                                  {reservation.prepaid_at && (
+                                    <div>
+                                      <span className="font-semibold text-copper">{t.paymentDate}:</span> {format(new Date(reservation.prepaid_at), 'MMM d, yyyy h:mm a')}
+                                    </div>
+                                  )}
+                                </>
+                              )}
                             </div>
+
+                            {/* Refund Button for Paid Omakase Reservations */}
+                            {reservation.type === 'omakase' && 
+                             reservation.payment_status === 'paid' && 
+                             reservation.stripe_charge_id &&
+                             (reservation.status === 'cancelled' || reservation.status === 'no-show') && (
+                              <div className="mt-4 flex justify-end">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleRefund(reservation);
+                                  }}
+                                  className="group relative liquid-glass bg-gradient-to-r from-blue-500/80 to-indigo-600/80 text-white px-4 py-2 rounded-xl hover:from-blue-600 hover:to-indigo-700 transition-all duration-300 font-semibold text-sm shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center gap-2 backdrop-blur-sm border border-white/20"
+                                >
+                                  <span>💸</span>
+                                  <span>{t.refundButton}</span>
+                                  <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-sand-beige/20 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                                </button>
+                              </div>
+                            )}
 
                             {reservation.special_requests && (
                               <div className="mt-3 p-3 bg-white/30 rounded-lg">
@@ -3590,6 +3904,252 @@ export default function AdminDashboard() {
                     </button>
                   </div>
                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Refund Modal */}
+      {showRefundModal && refundingReservation && (
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-md flex items-center justify-center p-4 z-50">
+          <div className="bg-gradient-to-br from-sand-beige/95 to-white/90 backdrop-blur-xl rounded-3xl p-8 max-w-md w-full shadow-2xl border border-copper/20">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-playfair text-copper">{t.refundModalTitle}</h2>
+              <button
+                onClick={() => setShowRefundModal(false)}
+                className="w-10 h-10 rounded-full bg-sand-beige/60 hover:bg-sand-beige/80 flex items-center justify-center transition-colors duration-200"
+              >
+                <span className="text-gray-600">✕</span>
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {/* Reservation Details */}
+              <div className="bg-white/30 rounded-lg p-4">
+                <div className="text-sm space-y-2">
+                  <div>
+                    <span className="font-semibold text-copper">Customer:</span> {refundingReservation.customer_name}
+                  </div>
+                  <div>
+                    <span className="font-semibold text-copper">Amount Paid:</span> ${(refundingReservation.prepayment_amount! / 100).toFixed(2)}
+                  </div>
+                  {refundingReservation.payment_status === 'partially_refunded' && refundingReservation.cancellation_refund_percentage && (
+                    <div>
+                      <span className="font-semibold text-copper">Already Refunded:</span> {refundingReservation.cancellation_refund_percentage}% (${((refundingReservation.prepayment_amount! * refundingReservation.cancellation_refund_percentage) / 10000).toFixed(2)})
+                    </div>
+                  )}
+                  <div>
+                    <span className="font-semibold text-copper">Remaining Refundable:</span> ${
+                      refundingReservation.payment_status === 'partially_refunded' && refundingReservation.cancellation_refund_percentage
+                        ? ((refundingReservation.prepayment_amount! * (100 - refundingReservation.cancellation_refund_percentage)) / 10000).toFixed(2)
+                        : (refundingReservation.prepayment_amount! / 100).toFixed(2)
+                    }
+                  </div>
+                  <div>
+                    <span className="font-semibold text-copper">Date:</span> {format(parseLocalDate(refundingReservation.reservation_date), 'MMM d, yyyy')}
+                  </div>
+                </div>
+              </div>
+
+              {/* Refund Type */}
+              <div>
+                <label className="block text-sm font-semibold text-charcoal mb-2">{t.refundTypeLabel}</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setRefundType('full')
+                      setRefundPercentage(100)
+                    }}
+                    className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                      refundType === 'full'
+                        ? 'bg-copper text-white'
+                        : 'bg-white/50 text-charcoal hover:bg-white/70'
+                    }`}
+                  >
+                    {t.fullRefund}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRefundType('partial')}
+                    className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                      refundType === 'partial'
+                        ? 'bg-copper text-white'
+                        : 'bg-white/50 text-charcoal hover:bg-white/70'
+                    }`}
+                  >
+                    {t.partialRefund}
+                  </button>
+                </div>
+              </div>
+
+              {/* Partial Refund Percentage */}
+              {refundType === 'partial' && (
+                <div>
+                  <label className="block text-sm font-semibold text-charcoal mb-2">
+                    {t.refundPercentageLabel}: {refundPercentage}%
+                  </label>
+                  <input
+                    type="range"
+                    min="1"
+                    max={refundingReservation.payment_status === 'partially_refunded' && refundingReservation.cancellation_refund_percentage
+                      ? 100 - refundingReservation.cancellation_refund_percentage
+                      : 99}
+                    value={refundPercentage}
+                    onChange={(e) => setRefundPercentage(Number(e.target.value))}
+                    className="w-full"
+                  />
+                  <div className="mt-2 text-sm text-charcoal">
+                    Refund Amount: ${
+                      refundingReservation.payment_status === 'partially_refunded' && refundingReservation.cancellation_refund_percentage
+                        ? ((refundingReservation.prepayment_amount! * (100 - refundingReservation.cancellation_refund_percentage) * refundPercentage) / 1000000).toFixed(2)
+                        : ((refundingReservation.prepayment_amount! * refundPercentage) / 10000).toFixed(2)
+                    }
+                  </div>
+                </div>
+              )}
+
+              {/* Refund Reason */}
+              <div>
+                <label className="block text-sm font-semibold text-charcoal mb-2">{t.refundReasonLabel}</label>
+                <textarea
+                  value={refundReason}
+                  onChange={(e) => setRefundReason(e.target.value)}
+                  placeholder="Optional: Provide a reason for the refund"
+                  className="w-full px-4 py-2 border border-copper/30 rounded-lg focus:ring-2 focus:ring-copper/50 focus:border-copper transition-all bg-white/70 backdrop-blur-sm resize-none h-20"
+                />
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-3 pt-4">
+                <button
+                  onClick={() => setShowRefundModal(false)}
+                  className="flex-1 px-4 py-2 border border-copper/30 rounded-lg hover:bg-white/50 transition-all font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={processRefund}
+                  disabled={processingRefund}
+                  className="flex-1 bg-gradient-to-r from-blue-500 to-indigo-600 text-white px-4 py-2 rounded-lg hover:from-blue-600 hover:to-indigo-700 transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {processingRefund ? t.processingRefund : `Process ${refundType === 'full' ? 'Full' : `${refundPercentage}%`} Refund`}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Cancellation Confirmation Modal */}
+      {showCancelModal && cancellingReservation && (
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-md flex items-center justify-center p-4 z-50">
+          <div className="bg-gradient-to-br from-sand-beige/95 to-white/90 backdrop-blur-xl rounded-3xl p-8 max-w-md w-full shadow-2xl border border-copper/20">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-playfair text-copper">{t.cancelModalTitle}</h2>
+              <button
+                onClick={() => setShowCancelModal(false)}
+                className="w-10 h-10 rounded-full bg-sand-beige/60 hover:bg-sand-beige/80 flex items-center justify-center transition-colors duration-200"
+              >
+                <span className="text-gray-600">✕</span>
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {/* Warning */}
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                <p className="text-sm font-semibold text-red-800">{t.cancelModalWarning}</p>
+              </div>
+
+              {/* Reservation Details */}
+              <div className="bg-white/30 rounded-lg p-4">
+                <div className="text-sm space-y-2">
+                  <div>
+                    <span className="font-semibold text-copper">Customer:</span> {cancellingReservation.customer_name}
+                  </div>
+                  <div>
+                    <span className="font-semibold text-copper">Date:</span> {format(parseLocalDate(cancellingReservation.reservation_date), 'MMM d, yyyy')}
+                  </div>
+                  <div>
+                    <span className="font-semibold text-copper">Time:</span> {cancellingReservation.reservation_time}
+                  </div>
+                  <div>
+                    <span className="font-semibold text-copper">Party Size:</span> {cancellingReservation.party_size} {cancellingReservation.party_size === 1 ? 'person' : 'people'}
+                  </div>
+                </div>
+              </div>
+
+              {/* Refund Policy for Omakase */}
+              {cancellingReservation.type === 'omakase' && cancellingReservation.payment_status === 'paid' && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <h4 className="font-semibold text-blue-900 mb-2">{t.refundPolicyTitle}</h4>
+                  <p className="text-sm text-blue-800 mb-2">{t.automaticRefundNote}</p>
+                  {(() => {
+                    const reservationDate = new Date(cancellingReservation.reservation_date + 'T' + cancellingReservation.reservation_time);
+                    const now = new Date();
+                    const hoursUntilReservation = Math.round((reservationDate.getTime() - now.getTime()) / (1000 * 60 * 60));
+                    
+                    let refundMessage = '';
+                    let refundAmount = 0;
+                    
+                    if (hoursUntilReservation > 48) {
+                      refundMessage = `100% ${t.refundPercentageText}`;
+                      refundAmount = cancellingReservation.prepayment_amount! / 100;
+                    } else if (hoursUntilReservation > 24) {
+                      refundMessage = `50% ${t.refundPercentageText}`;
+                      refundAmount = (cancellingReservation.prepayment_amount! * 0.5) / 100;
+                    } else {
+                      refundMessage = t.noRefundWarning;
+                      refundAmount = 0;
+                    }
+                    
+                    return (
+                      <div className="text-sm">
+                        <div className="font-medium text-blue-900">
+                          {t.hoursBeforeReservation}: {hoursUntilReservation > 0 ? hoursUntilReservation : 0}
+                        </div>
+                        <div className="font-bold text-blue-900 mt-1">
+                          {refundMessage} {refundAmount > 0 && `($${refundAmount.toFixed(2)})`}
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
+
+              {/* Cancellation Reason */}
+              <div>
+                <label className="block text-sm font-semibold text-charcoal mb-2">{t.selectCancellationReason}</label>
+                <select
+                  value={cancellationReason}
+                  onChange={(e) => setCancellationReason(e.target.value)}
+                  className="w-full px-4 py-2 border border-copper/30 rounded-lg focus:ring-2 focus:ring-copper/50 focus:border-copper transition-all bg-white/70 backdrop-blur-sm"
+                  required
+                >
+                  <option value="">-- Select a reason --</option>
+                  {CANCELLATION_REASONS.map(reason => (
+                    <option key={reason} value={reason}>{reason}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-3 pt-4">
+                <button
+                  onClick={() => setShowCancelModal(false)}
+                  className="flex-1 px-4 py-2 border border-copper/30 rounded-lg hover:bg-white/50 transition-all font-medium"
+                  disabled={processingCancellation}
+                >
+                  {t.cancelButton}
+                </button>
+                <button
+                  onClick={processCancellation}
+                  disabled={processingCancellation || !cancellationReason.trim()}
+                  className="flex-1 bg-gradient-to-r from-red-500 to-rose-600 text-white px-4 py-2 rounded-lg hover:from-red-600 hover:to-rose-700 transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {processingCancellation ? t.processingCancellation : t.confirmCancel}
+                </button>
               </div>
             </div>
           </div>
