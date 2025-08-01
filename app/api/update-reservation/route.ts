@@ -12,7 +12,7 @@ let stripe: Stripe | null = null;
 if (process.env.STRIPE_SECRET_KEY) {
   try {
     stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-      apiVersion: '2024-12-18.acacia'
+      apiVersion: '2025-07-30.basil'
     });
   } catch (error) {
     console.error('Failed to initialize Stripe:', error);
