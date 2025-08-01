@@ -35,6 +35,12 @@ interface Reservation {
   prepaid_at?: string
   stripe_charge_id?: string
   cancellation_refund_percentage?: number
+  // Payment fields for dining
+  payment_method_saved?: boolean
+  no_show_fee_charged?: boolean
+  no_show_fee_amount?: number
+  no_show_fee_charged_at?: string
+  stripe_customer_id?: string
 }
 
 interface EditReservation {
@@ -103,6 +109,7 @@ export default function AdminDashboard() {
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [showCancelled, setShowCancelled] = useState(false)
+  const [showPending, setShowPending] = useState(false)
   const [editingReservation, setEditingReservation] = useState<EditReservation | null>(null)
   const [showNewReservationForm, setShowNewReservationForm] = useState(false)
   const [expandedCard, setExpandedCard] = useState<string | null>(null)
@@ -219,6 +226,17 @@ export default function AdminDashboard() {
   // Communication history modal state
   const [showCommunicationModal, setShowCommunicationModal] = useState(false)
   const [communicationReservation, setCommunicationReservation] = useState<Reservation | null>(null)
+  
+  // Dining no-show charge modal state
+  const [showDiningChargeModal, setShowDiningChargeModal] = useState(false)
+  const [chargingReservation, setChargingReservation] = useState<Reservation | null>(null)
+  const [processingDiningCharge, setProcessingDiningCharge] = useState(false)
+  
+  // Dining refund modal state
+  const [showDiningRefundModal, setShowDiningRefundModal] = useState(false)
+  const [refundingDiningReservation, setRefundingDiningReservation] = useState<Reservation | null>(null)
+  const [diningRefundReason, setDiningRefundReason] = useState('')
+  const [processingDiningRefund, setProcessingDiningRefund] = useState(false)
 
   // Helper function to parse dates in local timezone (fixes UTC/timezone bugs)
   const parseLocalDate = (dateStr: string) => {
@@ -545,6 +563,7 @@ export default function AdminDashboard() {
       searchAllReservations: "Search all reservations...",
       allStatuses: "All Statuses",
       showCancelled: "Show Cancelled",
+      showPending: "Show Pending",
       searchResults: "Search Results",
       
       // Reservation Types
@@ -780,6 +799,7 @@ export default function AdminDashboard() {
       searchAllReservations: "搜索所有预订...",
       allStatuses: "所有状态",
       showCancelled: "显示已取消",
+      showPending: "显示待定",
       searchResults: "搜索结果",
       
       // Reservation Types
@@ -1786,8 +1806,11 @@ export default function AdminDashboard() {
     const nextWeekStart = format(new Date(currentDate.getTime() + (7 - daysFromMonday) * 24 * 60 * 60 * 1000), 'yyyy-MM-dd')
     const nextWeekEnd = format(new Date(currentDate.getTime() + (13 - daysFromMonday) * 24 * 60 * 60 * 1000), 'yyyy-MM-dd')
     
-    // Filter out cancelled reservations for all stats
-    const activeReservations = reservationsData.filter(r => r.status !== 'cancelled')
+    // Filter out cancelled and pending reservations for all stats (pending means payment not successful yet)
+    const activeReservations = reservationsData.filter(r => 
+      r.status !== 'cancelled' && 
+      r.status !== 'pending'
+    )
     
     // Daily calculations
     const yesterdayReservations = activeReservations.filter(r => r.reservation_date === yesterday).length
@@ -1849,6 +1872,11 @@ export default function AdminDashboard() {
         return false;
       }
 
+      // Check if we should show pending reservations
+      if (reservation.status === 'pending' && !showPending) {
+        return false;
+      }
+
       // Then apply other filters
       const matchesSearch = searchTerm === '' || 
         reservation.customer_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -1868,8 +1896,11 @@ export default function AdminDashboard() {
       return { percentage: 0, omakaseUsed: 0, diningUsed: 0, totalUsed: 0, totalCapacity: seatCapacity.omakaseCapacity + seatCapacity.diningCapacity }
     }
 
-    // Filter out cancelled reservations
-    const activeReservations = reservationsForDay.filter(r => r.status !== 'cancelled')
+    // Filter out cancelled and pending reservations (pending means payment not successful yet)
+    const activeReservations = reservationsForDay.filter(r => 
+      r.status !== 'cancelled' && 
+      r.status !== 'pending'
+    )
     
     // Calculate used seats by type
     const omakaseUsed = activeReservations
@@ -1901,6 +1932,11 @@ export default function AdminDashboard() {
     return reservations.filter(reservation => {
       // First check if we should show cancelled reservations
       if (reservation.status === 'cancelled' && !showCancelled) {
+        return false;
+      }
+
+      // Check if we should show pending reservations
+      if (reservation.status === 'pending' && !showPending) {
         return false;
       }
 
@@ -2138,6 +2174,127 @@ export default function AdminDashboard() {
       })
     } finally {
       setProcessingRefund(false)
+    }
+  }
+
+  const handleDiningNoShowCharge = (reservation: Reservation) => {
+    setChargingReservation(reservation)
+    setShowDiningChargeModal(true)
+  }
+
+  const processDiningNoShowCharge = async () => {
+    if (!chargingReservation) return
+
+    setProcessingDiningCharge(true)
+    
+    try {
+      const chargeAmount = (chargingReservation.party_size || 1) * 2500 // $25 per person in cents
+
+      const response = await fetch('/api/stripe/charge-dining-fee', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          reservationId: chargingReservation.id,
+          chargeType: 'no_show',
+          amount: chargeAmount
+        })
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Charge failed')
+      }
+
+      const result = await response.json()
+
+      toast({
+        title: 'No-Show Fee Charged ✓',
+        description: `Successfully charged $${(chargeAmount / 100).toFixed(2)} for ${chargingReservation.party_size} guests`,
+      })
+
+      // Update local reservation state
+      setReservations(prev => prev.map(r => 
+        r.id === chargingReservation.id 
+          ? { 
+              ...r, 
+              no_show_fee_charged: true,
+              no_show_fee_amount: chargeAmount,
+              no_show_fee_charged_at: new Date().toISOString(),
+              stripe_charge_id: result.chargeId
+            }
+          : r
+      ))
+
+      setShowDiningChargeModal(false)
+      setChargingReservation(null)
+    } catch (error: any) {
+      toast({
+        title: 'Charge Failed ✗',
+        description: error.message || 'Failed to charge no-show fee',
+        variant: 'destructive',
+      })
+    } finally {
+      setProcessingDiningCharge(false)
+    }
+  }
+
+  const handleDiningRefund = (reservation: Reservation) => {
+    setRefundingDiningReservation(reservation)
+    setDiningRefundReason('')
+    setShowDiningRefundModal(true)
+  }
+
+  const processDiningRefund = async () => {
+    if (!refundingDiningReservation || !refundingDiningReservation.stripe_charge_id) return
+
+    setProcessingDiningRefund(true)
+    
+    try {
+      const refundAmount = refundingDiningReservation.no_show_fee_amount || 0
+
+      const response = await fetch('/api/stripe/refund-dining-fee', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          reservationId: refundingDiningReservation.id,
+          chargeId: refundingDiningReservation.stripe_charge_id,
+          amount: refundAmount,
+          reason: diningRefundReason || 'Admin initiated refund'
+        })
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Refund failed')
+      }
+
+      const result = await response.json()
+
+      toast({
+        title: 'Refund Processed ✓',
+        description: `Successfully refunded $${(refundAmount / 100).toFixed(2)}`,
+      })
+
+      // Update local reservation state
+      setReservations(prev => prev.map(r => 
+        r.id === refundingDiningReservation.id 
+          ? { 
+              ...r, 
+              no_show_fee_charged: false
+            }
+          : r
+      ))
+
+      setShowDiningRefundModal(false)
+      setRefundingDiningReservation(null)
+    } catch (error: any) {
+      toast({
+        title: 'Refund Failed ✗',
+        description: error.message || 'Failed to process refund',
+        variant: 'destructive',
+      })
+    } finally {
+      setProcessingDiningRefund(false)
     }
   }
 
@@ -2650,7 +2807,7 @@ export default function AdminDashboard() {
                         {/* Simple capacity info - only show if not closed and not past */}
                         {!isClosedDate && !isPastDate && (
                           <div className="flex items-center gap-1 mt-1">
-                            <span className="text-xs text-copper font-medium">{reservationsForDay.filter(r => r.status !== 'cancelled').length}</span>
+                            <span className="text-xs text-copper font-medium">{reservationsForDay.filter(r => r.status !== 'cancelled' && r.status !== 'pending').length}</span>
                             <div className="flex items-center gap-0.5">
                               {hasPending && <div className="w-2 h-2 bg-red-500 rounded-full"></div>}
                               {hasConfirmed && <div className="w-2 h-2 bg-green-500 rounded-full"></div>}
@@ -2659,9 +2816,9 @@ export default function AdminDashboard() {
                         )}
                         
                         {/* For past dates, show reservation count if any */}
-                        {isPastDate && reservationsForDay.filter(r => r.status !== 'cancelled').length > 0 && (
+                        {isPastDate && reservationsForDay.filter(r => r.status !== 'cancelled' && r.status !== 'pending').length > 0 && (
                           <div className="flex items-center gap-1 mt-1">
-                            <span className="text-xs text-gray-500 font-medium">{reservationsForDay.filter(r => r.status !== 'cancelled').length}</span>
+                            <span className="text-xs text-gray-500 font-medium">{reservationsForDay.filter(r => r.status !== 'cancelled' && r.status !== 'pending').length}</span>
                             <div className="flex items-center gap-0.5">
                               {hasPending && <div className="w-2 h-2 bg-gray-400 rounded-full"></div>}
                               {hasConfirmed && <div className="w-2 h-2 bg-gray-500 rounded-full"></div>}
@@ -2727,6 +2884,15 @@ export default function AdminDashboard() {
                       className="form-checkbox h-5 w-5 text-copper rounded border-copper/20 focus:ring-copper"
                     />
                     <span className="text-charcoal text-sm sm:text-base">{t.showCancelled}</span>
+                  </label>
+                  <label className="flex items-center gap-2 px-4 py-3 rounded-xl border border-white/20 bg-white/50 backdrop-blur-sm cursor-pointer hover:bg-white/60 transition-all duration-300 w-full sm:w-auto justify-center sm:justify-start">
+                    <input
+                      type="checkbox"
+                      checked={showPending}
+                      onChange={(e) => setShowPending(e.target.checked)}
+                      className="form-checkbox h-5 w-5 text-copper rounded border-copper/20 focus:ring-copper"
+                    />
+                    <span className="text-charcoal text-sm sm:text-base">{t.showPending}</span>
                   </label>
                 </div>
               </div>
@@ -3138,6 +3304,74 @@ export default function AdminDashboard() {
                                 >
                                   <span>💸</span>
                                   <span>{t.refundButton}</span>
+                                  <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-sand-beige/20 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                                </button>
+                              </div>
+                            )}
+
+                            {/* Payment Information for Dining */}
+                            {reservation.type === 'dining' && reservation.payment_method_saved && (
+                              <div className="mt-3 p-3 bg-white/30 rounded-lg">
+                                <span className="font-semibold text-copper">Payment Status:</span>
+                                <div className="mt-2 space-y-2">
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-sm">Payment Method Saved:</span>
+                                    <span className="text-sm font-medium">✓ Yes</span>
+                                  </div>
+                                  {reservation.no_show_fee_charged && (
+                                    <>
+                                      <div className="flex items-center justify-between">
+                                        <span className="text-sm">No-Show Fee Charged:</span>
+                                        <span className="text-sm font-medium text-red-600">
+                                          ${((reservation.no_show_fee_amount || 0) / 100).toFixed(2)}
+                                        </span>
+                                      </div>
+                                      {reservation.no_show_fee_charged_at && (
+                                        <div className="flex items-center justify-between">
+                                          <span className="text-sm">Charged At:</span>
+                                          <span className="text-sm">{format(new Date(reservation.no_show_fee_charged_at), 'MMM d, h:mm a')}</span>
+                                        </div>
+                                      )}
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* No-Show Charge Button for Dining Reservations */}
+                            {reservation.type === 'dining' && 
+                             reservation.status === 'no-show' && 
+                             reservation.payment_method_saved &&
+                             !reservation.no_show_fee_charged && (
+                              <div className="mt-4 flex justify-end gap-2">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDiningNoShowCharge(reservation);
+                                  }}
+                                  className="group relative liquid-glass bg-gradient-to-r from-red-500/80 to-rose-600/80 text-white px-4 py-2 rounded-xl hover:from-red-600 hover:to-rose-700 transition-all duration-300 font-semibold text-sm shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center gap-2 backdrop-blur-sm border border-white/20"
+                                >
+                                  <span>💳</span>
+                                  <span>Charge No-Show Fee</span>
+                                  <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-sand-beige/20 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                                </button>
+                              </div>
+                            )}
+
+                            {/* Refund Button for Charged Dining No-Show Fees */}
+                            {reservation.type === 'dining' && 
+                             reservation.no_show_fee_charged && 
+                             reservation.stripe_charge_id && (
+                              <div className="mt-4 flex justify-end">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDiningRefund(reservation);
+                                  }}
+                                  className="group relative liquid-glass bg-gradient-to-r from-blue-500/80 to-indigo-600/80 text-white px-4 py-2 rounded-xl hover:from-blue-600 hover:to-indigo-700 transition-all duration-300 font-semibold text-sm shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center gap-2 backdrop-blur-sm border border-white/20"
+                                >
+                                  <span>💸</span>
+                                  <span>Refund No-Show Fee</span>
                                   <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-sand-beige/20 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                                 </button>
                               </div>
@@ -4513,6 +4747,130 @@ export default function AdminDashboard() {
           customerEmail={communicationReservation.customer_email}
           isChineseMode={language === 'zh'}
         />
+      )}
+
+      {/* Dining No-Show Charge Modal */}
+      {showDiningChargeModal && diningChargingReservation && (
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-md flex items-center justify-center p-4 z-50">
+          <div className="bg-gradient-to-br from-sand-beige/95 to-white/90 backdrop-blur-xl rounded-3xl p-8 max-w-md w-full shadow-2xl border border-copper/20">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-playfair text-copper">Charge No-Show Fee</h2>
+              <button
+                onClick={() => setShowDiningChargeModal(false)}
+                className="w-10 h-10 rounded-full bg-sand-beige/60 hover:bg-sand-beige/80 flex items-center justify-center transition-colors duration-200"
+              >
+                <span className="text-gray-600">✕</span>
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {/* Charge Details */}
+              <div className="bg-white/30 rounded-lg p-4">
+                <div className="text-sm space-y-2">
+                  <div>
+                    <span className="font-semibold text-copper">Customer:</span> {diningChargingReservation.customer_name}
+                  </div>
+                  <div>
+                    <span className="font-semibold text-copper">Party Size:</span> {diningChargingReservation.party_size} {diningChargingReservation.party_size === 1 ? 'person' : 'people'}
+                  </div>
+                  <div>
+                    <span className="font-semibold text-copper">No-Show Fee:</span> ${diningNoShowAmount / 100} ($25 × {diningChargingReservation.party_size})
+                  </div>
+                  <div>
+                    <span className="font-semibold text-copper">Date:</span> {format(parseLocalDate(diningChargingReservation.reservation_date), 'MMM d, yyyy')}
+                  </div>
+                </div>
+              </div>
+
+              {/* Warning */}
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <p className="text-sm text-yellow-800">This will charge the customer's saved payment method for the no-show fee.</p>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-3 pt-4">
+                <button
+                  onClick={() => setShowDiningChargeModal(false)}
+                  className="flex-1 px-4 py-2 border border-copper/30 rounded-lg hover:bg-white/50 transition-all font-medium"
+                  disabled={processingDiningCharge}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={processDiningNoShowCharge}
+                  disabled={processingDiningCharge}
+                  className="flex-1 bg-gradient-to-r from-red-500 to-rose-600 text-white px-4 py-2 rounded-lg hover:from-red-600 hover:to-rose-700 transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {processingDiningCharge ? 'Processing...' : `Charge $${diningNoShowAmount / 100}`}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Dining Refund Modal */}
+      {showDiningRefundModal && diningRefundingReservation && (
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-md flex items-center justify-center p-4 z-50">
+          <div className="bg-gradient-to-br from-sand-beige/95 to-white/90 backdrop-blur-xl rounded-3xl p-8 max-w-md w-full shadow-2xl border border-copper/20">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-playfair text-copper">Refund No-Show Fee</h2>
+              <button
+                onClick={() => setShowDiningRefundModal(false)}
+                className="w-10 h-10 rounded-full bg-sand-beige/60 hover:bg-sand-beige/80 flex items-center justify-center transition-colors duration-200"
+              >
+                <span className="text-gray-600">✕</span>
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {/* Refund Details */}
+              <div className="bg-white/30 rounded-lg p-4">
+                <div className="text-sm space-y-2">
+                  <div>
+                    <span className="font-semibold text-copper">Customer:</span> {diningRefundingReservation.customer_name}
+                  </div>
+                  <div>
+                    <span className="font-semibold text-copper">Amount Charged:</span> ${(diningRefundingReservation.no_show_fee_amount! / 100).toFixed(2)}
+                  </div>
+                  <div>
+                    <span className="font-semibold text-copper">Date:</span> {format(parseLocalDate(diningRefundingReservation.reservation_date), 'MMM d, yyyy')}
+                  </div>
+                </div>
+              </div>
+
+              {/* Refund Reason */}
+              <div>
+                <label className="block text-sm font-semibold text-charcoal mb-2">Reason for Refund</label>
+                <textarea
+                  value={diningRefundReason}
+                  onChange={(e) => setDiningRefundReason(e.target.value)}
+                  className="w-full px-4 py-2 border border-copper/30 rounded-lg focus:ring-2 focus:ring-copper/50 focus:border-copper transition-all bg-white/70 backdrop-blur-sm"
+                  rows={3}
+                  placeholder="Enter reason for refund..."
+                />
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-3 pt-4">
+                <button
+                  onClick={() => setShowDiningRefundModal(false)}
+                  className="flex-1 px-4 py-2 border border-copper/30 rounded-lg hover:bg-white/50 transition-all font-medium"
+                  disabled={processingDiningRefund}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={processDiningRefund}
+                  disabled={processingDiningRefund || !diningRefundReason.trim()}
+                  className="flex-1 bg-gradient-to-r from-copper to-copper-dark text-white px-4 py-2 rounded-lg hover:from-copper-dark hover:to-copper transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {processingDiningRefund ? 'Processing...' : `Refund $${(diningRefundingReservation.no_show_fee_amount! / 100).toFixed(2)}`}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       </div>
