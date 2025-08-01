@@ -4750,34 +4750,34 @@ export default function AdminDashboard() {
       )}
 
       {/* Dining No-Show Charge Modal */}
-      {showDiningChargeModal && diningChargingReservation && (
-        <div className="fixed inset-0 bg-black/30 backdrop-blur-md flex items-center justify-center p-4 z-50">
-          <div className="bg-gradient-to-br from-sand-beige/95 to-white/90 backdrop-blur-xl rounded-3xl p-8 max-w-md w-full shadow-2xl border border-copper/20">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-playfair text-copper">Charge No-Show Fee</h2>
-              <button
-                onClick={() => setShowDiningChargeModal(false)}
-                className="w-10 h-10 rounded-full bg-sand-beige/60 hover:bg-sand-beige/80 flex items-center justify-center transition-colors duration-200"
-              >
-                <span className="text-gray-600">✕</span>
-              </button>
-            </div>
+      {showDiningChargeModal && chargingReservation && (
+          <div className="fixed inset-0 bg-black/30 backdrop-blur-md flex items-center justify-center p-4 z-50">
+            <div className="bg-gradient-to-br from-sand-beige/95 to-white/90 backdrop-blur-xl rounded-3xl p-8 max-w-md w-full shadow-2xl border border-copper/20">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-playfair text-copper">Charge No-Show Fee</h2>
+                <button
+                  onClick={() => setShowDiningChargeModal(false)}
+                  className="w-10 h-10 rounded-full bg-sand-beige/60 hover:bg-sand-beige/80 flex items-center justify-center transition-colors duration-200"
+                >
+                  <span className="text-gray-600">✕</span>
+                </button>
+              </div>
 
-            <div className="space-y-4">
+              <div className="space-y-4">
               {/* Charge Details */}
               <div className="bg-white/30 rounded-lg p-4">
                 <div className="text-sm space-y-2">
                   <div>
-                    <span className="font-semibold text-copper">Customer:</span> {diningChargingReservation.customer_name}
+                    <span className="font-semibold text-copper">Customer:</span> {chargingReservation.customer_name}
                   </div>
                   <div>
-                    <span className="font-semibold text-copper">Party Size:</span> {diningChargingReservation.party_size} {diningChargingReservation.party_size === 1 ? 'person' : 'people'}
+                    <span className="font-semibold text-copper">Party Size:</span> {chargingReservation.party_size} {chargingReservation.party_size === 1 ? 'person' : 'people'}
                   </div>
                   <div>
-                    <span className="font-semibold text-copper">No-Show Fee:</span> ${diningNoShowAmount / 100} ($25 × {diningChargingReservation.party_size})
+                    <span className="font-semibold text-copper">No-Show Fee:</span> ${(chargingReservation.party_size || 1) * 25} ($25 × {chargingReservation.party_size})
                   </div>
                   <div>
-                    <span className="font-semibold text-copper">Date:</span> {format(parseLocalDate(diningChargingReservation.reservation_date), 'MMM d, yyyy')}
+                    <span className="font-semibold text-copper">Date:</span> {format(parseLocalDate(chargingReservation.reservation_date), 'MMM d, yyyy')}
                   </div>
                 </div>
               </div>
@@ -4801,7 +4801,7 @@ export default function AdminDashboard() {
                   disabled={processingDiningCharge}
                   className="flex-1 bg-gradient-to-r from-red-500 to-rose-600 text-white px-4 py-2 rounded-lg hover:from-red-600 hover:to-rose-700 transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {processingDiningCharge ? 'Processing...' : `Charge $${diningNoShowAmount / 100}`}
+                  {processingDiningCharge ? 'Processing...' : `Charge $${(chargingReservation.party_size || 1) * 25}`}
                 </button>
               </div>
             </div>
@@ -4810,7 +4810,7 @@ export default function AdminDashboard() {
       )}
 
       {/* Dining Refund Modal */}
-      {showDiningRefundModal && diningRefundingReservation && (
+      {showDiningRefundModal && refundingReservation && (
         <div className="fixed inset-0 bg-black/30 backdrop-blur-md flex items-center justify-center p-4 z-50">
           <div className="bg-gradient-to-br from-sand-beige/95 to-white/90 backdrop-blur-xl rounded-3xl p-8 max-w-md w-full shadow-2xl border border-copper/20">
             <div className="flex items-center justify-between mb-6">
@@ -4828,13 +4828,13 @@ export default function AdminDashboard() {
               <div className="bg-white/30 rounded-lg p-4">
                 <div className="text-sm space-y-2">
                   <div>
-                    <span className="font-semibold text-copper">Customer:</span> {diningRefundingReservation.customer_name}
+                    <span className="font-semibold text-copper">Customer:</span> {refundingReservation.customer_name}
                   </div>
                   <div>
-                    <span className="font-semibold text-copper">Amount Charged:</span> ${(diningRefundingReservation.no_show_fee_amount! / 100).toFixed(2)}
+                    <span className="font-semibold text-copper">Amount Charged:</span> ${(refundingReservation.no_show_fee_amount! / 100).toFixed(2)}
                   </div>
                   <div>
-                    <span className="font-semibold text-copper">Date:</span> {format(parseLocalDate(diningRefundingReservation.reservation_date), 'MMM d, yyyy')}
+                    <span className="font-semibold text-copper">Date:</span> {format(parseLocalDate(refundingReservation.reservation_date), 'MMM d, yyyy')}
                   </div>
                 </div>
               </div>
@@ -4865,14 +4865,14 @@ export default function AdminDashboard() {
                   disabled={processingDiningRefund || !diningRefundReason.trim()}
                   className="flex-1 bg-gradient-to-r from-copper to-copper-dark text-white px-4 py-2 rounded-lg hover:from-copper-dark hover:to-copper transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {processingDiningRefund ? 'Processing...' : `Refund $${(diningRefundingReservation.no_show_fee_amount! / 100).toFixed(2)}`}
+                  {processingDiningRefund ? 'Processing...' : `Refund $${(refundingReservation.no_show_fee_amount! / 100).toFixed(2)}`}
                 </button>
               </div>
             </div>
           </div>
         </div>
       )}
-
+      
       </div>
     </div>
   )
