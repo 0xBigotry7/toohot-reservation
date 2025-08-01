@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { getSeatCapacitySettings, isDateClosed, isReservationTypeAvailable } from '@/lib/server-utils';
+import { getSeatCapacitySettings, isDateClosed, isReservationTypeAvailable, isShiftClosed } from '@/lib/server-utils';
 
 const supabaseAdmin = createClient(
   process.env.SUPABASE_URL!,
@@ -10,7 +10,7 @@ const supabaseAdmin = createClient(
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { date, type, partySize } = body;
+    const { date, type, partySize, time } = body;
 
     // Validate required fields
     if (!date || !type || !partySize) {
@@ -66,10 +66,38 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    // Check shift-based closures for dining reservations
+    if (type === 'dining' && time) {
+      // Determine shift based on time (lunch: before 3pm, dinner: 3pm and after)
+      const hour = parseInt(time.split(':')[0]);
+      const shift = hour < 15 ? 'lunch' : 'dinner';
+      
+      const shiftIsClosed = await isShiftClosed(date, shift);
+      if (shiftIsClosed) {
+        return NextResponse.json({
+          success: true,
+          available: false,
+          reason: `The ${shift} shift has been closed for reservations on this date`
+        });
+      }
+    }
+
     // Check if the reservation type is available on this day of the week
-    const typeIsAvailable = await isReservationTypeAvailable(type as 'omakase' | 'dining', date);
+    const typeIsAvailable = await isReservationTypeAvailable(type as 'omakase' | 'dining', date, time);
     if (!typeIsAvailable) {
       const dayName = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][new Date(date).getDay()];
+      
+      // More specific message for dining shift availability
+      if (type === 'dining' && time) {
+        const hour = parseInt(time.split(':')[0]);
+        const shiftName = hour < 15 ? 'lunch' : 'dinner';
+        return NextResponse.json({
+          success: true,
+          available: false,
+          reason: `Dining ${shiftName} service is not available on ${dayName}s`
+        });
+      }
+      
       return NextResponse.json({
         success: true,
         available: false,

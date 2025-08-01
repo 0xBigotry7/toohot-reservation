@@ -55,17 +55,18 @@ export async function getClosedDatesSettings() {
       const closedDates = dbSettings.setting_value.dates || []
       const closedWeekdays = dbSettings.setting_value.closedWeekdays || []
       const holidays = dbSettings.setting_value.holidays || []
-      console.log('Loaded enhanced closed dates from database:', { closedDates, closedWeekdays, holidaysCount: holidays.length })
-      return { closedDates, closedWeekdays, holidays }
+      const shiftClosures = dbSettings.setting_value.shiftClosures || []
+      console.log('Loaded enhanced closed dates from database:', { closedDates, closedWeekdays, holidaysCount: holidays.length, shiftClosuresCount: shiftClosures.length })
+      return { closedDates, closedWeekdays, holidays, shiftClosures }
     } else {
       // No closed dates found, return empty arrays
       console.log('No closed dates found in database')
-      return { closedDates: [], closedWeekdays: [], holidays: [] }
+      return { closedDates: [], closedWeekdays: [], holidays: [], shiftClosures: [] }
     }
   } catch (error) {
     console.error('Error fetching closed dates, using empty arrays:', error)
     // Return empty arrays on error
-    return { closedDates: [], closedWeekdays: [], holidays: [] }
+    return { closedDates: [], closedWeekdays: [], holidays: [], shiftClosures: [] }
   }
 }
 
@@ -90,13 +91,35 @@ export async function isDateClosed(dateStr: string): Promise<boolean> {
   // Check holidays
   if (settings.holidays.some((h: any) => h.date === dateStr && h.closed)) return true
   
+  // Check shift closures for full day only
+  if (settings.shiftClosures.some((sc: any) => sc.date === dateStr && sc.type === 'full_day')) return true
+  
+  return false
+}
+
+// Helper function to check if a specific shift is closed
+export async function isShiftClosed(dateStr: string, shiftType: 'lunch' | 'dinner'): Promise<boolean> {
+  const settings = await getClosedDatesSettings()
+  
+  // If the whole date is closed, the shift is also closed
+  if (await isDateClosed(dateStr)) return true
+  
+  // Check shift-specific closures
+  const shiftClosure = settings.shiftClosures.find((sc: any) => sc.date === dateStr)
+  if (!shiftClosure) return false
+  
+  // Check if the specific shift is closed
+  if (shiftType === 'lunch' && (shiftClosure.type === 'lunch_only' || shiftClosure.type === 'full_day')) return true
+  if (shiftType === 'dinner' && (shiftClosure.type === 'dinner_only' || shiftClosure.type === 'full_day')) return true
+  
   return false
 }
 
 // Get availability settings from database
 export async function getAvailabilitySettings(): Promise<{
   omakaseAvailableDays: number[],
-  diningAvailableDays: number[]
+  diningAvailableDays: number[],
+  diningAvailableShifts?: { [key: number]: ('lunch' | 'dinner')[] }
 }> {
   try {
     console.log('🔍 Fetching availability settings from database...')
@@ -118,7 +141,8 @@ export async function getAvailabilitySettings(): Promise<{
     console.log('Loaded availability settings from database:', dbSettings.setting_value)
     return {
       omakaseAvailableDays: dbSettings.setting_value.omakaseAvailableDays || [4],
-      diningAvailableDays: dbSettings.setting_value.diningAvailableDays || [0, 1, 2, 3, 4, 5, 6]
+      diningAvailableDays: dbSettings.setting_value.diningAvailableDays || [0, 1, 2, 3, 4, 5, 6],
+      diningAvailableShifts: dbSettings.setting_value.diningAvailableShifts || undefined
     }
   } catch (error) {
     console.error('Error fetching availability settings:', error)
@@ -132,7 +156,8 @@ export async function getAvailabilitySettings(): Promise<{
 // Check if a reservation type is available on a specific date
 export async function isReservationTypeAvailable(
   reservationType: 'omakase' | 'dining', 
-  dateStr: string
+  dateStr: string,
+  timeStr?: string
 ): Promise<boolean> {
   try {
     const settings = await getAvailabilitySettings()
@@ -142,7 +167,31 @@ export async function isReservationTypeAvailable(
     if (reservationType === 'omakase') {
       return settings.omakaseAvailableDays.includes(dayOfWeek)
     } else {
-      return settings.diningAvailableDays.includes(dayOfWeek)
+      // Check if dining is available on this day
+      if (!settings.diningAvailableDays.includes(dayOfWeek)) {
+        return false
+      }
+      
+      // If we have shift settings and a time, check shift availability
+      if (settings.diningAvailableShifts && timeStr) {
+        const shifts = settings.diningAvailableShifts[dayOfWeek]
+        if (!shifts || shifts.length === 0) {
+          return false // No shifts available on this day
+        }
+        
+        // Determine which shift based on time
+        const hour = parseInt(timeStr.split(':')[0])
+        const isLunchTime = hour < 15 // Before 3pm is lunch
+        
+        if (isLunchTime && !shifts.includes('lunch')) {
+          return false // Lunch not available
+        }
+        if (!isLunchTime && !shifts.includes('dinner')) {
+          return false // Dinner not available
+        }
+      }
+      
+      return true
     }
   } catch (error) {
     console.error('Error checking reservation type availability:', error)

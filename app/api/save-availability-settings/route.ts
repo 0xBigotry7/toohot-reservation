@@ -8,7 +8,7 @@ const supabaseAdmin = createClient(
 
 export async function POST(request: NextRequest) {
   try {
-    const { omakaseAvailableDays, diningAvailableDays } = await request.json()
+    const { omakaseAvailableDays, diningAvailableDays, diningAvailableShifts } = await request.json()
 
     // Validate input
     if (!Array.isArray(omakaseAvailableDays) || !Array.isArray(diningAvailableDays)) {
@@ -38,14 +38,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: diningError }, { status: 400 })
     }
 
-    // Ensure at least one day is selected for each type
-    if (omakaseAvailableDays.length === 0) {
-      return NextResponse.json(
-        { success: false, error: 'Omakase must be available on at least one day' },
-        { status: 400 }
-      )
-    }
-
+    // Dining must have at least one day, but omakase can have no days (fully closed)
     if (diningAvailableDays.length === 0) {
       return NextResponse.json(
         { success: false, error: 'Dining must be available on at least one day' },
@@ -64,7 +57,8 @@ export async function POST(request: NextRequest) {
         setting_key: 'availability_settings',
         setting_value: {
           omakaseAvailableDays: uniqueOmakaseDays,
-          diningAvailableDays: uniqueDiningDays
+          diningAvailableDays: uniqueDiningDays,
+          diningAvailableShifts: diningAvailableShifts || {}
         },
         updated_at: new Date().toISOString()
       }, {

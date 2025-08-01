@@ -22,7 +22,16 @@ export async function GET() {
         success: true,
         settings: {
           omakaseAvailableDays: dbSettings.setting_value.omakaseAvailableDays || [4], // Default: Thursday only
-          diningAvailableDays: dbSettings.setting_value.diningAvailableDays || [0, 1, 2, 3, 4, 5, 6] // Default: All days
+          diningAvailableDays: dbSettings.setting_value.diningAvailableDays || [0, 1, 2, 3, 4, 5, 6], // Default: All days
+          diningAvailableShifts: dbSettings.setting_value.diningAvailableShifts || {
+            0: ['lunch', 'dinner'],
+            1: ['lunch', 'dinner'],
+            2: ['lunch', 'dinner'],
+            3: ['lunch', 'dinner'],
+            4: ['lunch', 'dinner'],
+            5: ['lunch', 'dinner'],
+            6: ['lunch', 'dinner']
+          }
         },
         source: 'database'
       })
@@ -34,7 +43,16 @@ export async function GET() {
       success: true,
       settings: {
         omakaseAvailableDays: [4], // Default: Thursday only
-        diningAvailableDays: [0, 1, 2, 3, 4, 5, 6] // Default: All days
+        diningAvailableDays: [0, 1, 2, 3, 4, 5, 6], // Default: All days
+        diningAvailableShifts: {
+          0: ['lunch', 'dinner'],
+          1: ['lunch', 'dinner'],
+          2: ['lunch', 'dinner'],
+          3: ['lunch', 'dinner'],
+          4: ['lunch', 'dinner'],
+          5: ['lunch', 'dinner'],
+          6: ['lunch', 'dinner']
+        }
       },
       source: 'default'
     })
@@ -48,7 +66,16 @@ export async function GET() {
         // Return default settings on error
         settings: {
           omakaseAvailableDays: [4], // Default: Thursday only
-          diningAvailableDays: [0, 1, 2, 3, 4, 5, 6] // Default: All days
+          diningAvailableDays: [0, 1, 2, 3, 4, 5, 6], // Default: All days
+          diningAvailableShifts: {
+            0: ['lunch', 'dinner'],
+            1: ['lunch', 'dinner'],
+            2: ['lunch', 'dinner'],
+            3: ['lunch', 'dinner'],
+            4: ['lunch', 'dinner'],
+            5: ['lunch', 'dinner'],
+            6: ['lunch', 'dinner']
+          }
         },
         source: 'default'
       },

@@ -148,11 +148,22 @@ export default function AdminDashboard() {
   const [newClosedDate, setNewClosedDate] = useState('')
   const [closedWeekdays, setClosedWeekdays] = useState<number[]>([]) // 0=Sunday, 1=Monday, etc.
   const [holidays, setHolidays] = useState<{date: string, name: string, closed: boolean}[]>([])
+  const [shiftClosures, setShiftClosures] = useState<{date: string, type: 'full_day' | 'lunch_only' | 'dinner_only'}[]>([])
+  const [newShiftClosure, setNewShiftClosure] = useState({ date: '', type: 'full_day' as 'full_day' | 'lunch_only' | 'dinner_only' })
   
   // Availability settings (using getDay() values: 0=Sunday, 1=Monday, etc.)
   const [availabilitySettings, setAvailabilitySettings] = useState({
     omakaseAvailableDays: [4], // Default: Thursday only (4 = Thursday in getDay() values)
-    diningAvailableDays: [0, 1, 2, 3, 4, 5, 6] // Default: All days (Sunday-Saturday)
+    diningAvailableDays: [0, 1, 2, 3, 4, 5, 6], // Default: All days (Sunday-Saturday)
+    diningAvailableShifts: {
+      0: ['lunch', 'dinner'] as ('lunch' | 'dinner')[],
+      1: ['lunch', 'dinner'] as ('lunch' | 'dinner')[],
+      2: ['lunch', 'dinner'] as ('lunch' | 'dinner')[],
+      3: ['lunch', 'dinner'] as ('lunch' | 'dinner')[],
+      4: ['lunch', 'dinner'] as ('lunch' | 'dinner')[],
+      5: ['lunch', 'dinner'] as ('lunch' | 'dinner')[],
+      6: ['lunch', 'dinner'] as ('lunch' | 'dinner')[]
+    }
   })
   const [availabilityLoaded, setAvailabilityLoaded] = useState(false)
   
@@ -631,6 +642,10 @@ export default function AdminDashboard() {
       availabilityDescription: "Configure which days of the week each reservation type is available. This controls when customers can book omakase vs dining reservations.",
       omakaseAvailabilityLabel: "Omakase Available Days",
       diningAvailabilityLabel: "À la Carte Available Days",
+      diningShiftLabel: "Available Shifts",
+      lunchShift: "Lunch",
+      dinnerShift: "Dinner",
+      noShiftsWarning: "At least one shift must be selected",
       availabilityHelpText: "Select the days when this reservation type is available",
       loadingAvailabilitySettings: "Loading availability settings...",
       availabilityNote: "Note: Customers can only book the selected reservation type on the enabled days",
@@ -644,6 +659,16 @@ export default function AdminDashboard() {
       noClosedDates: "No dates are currently closed",
       loadingClosedDates: "Loading closed dates...",
       closedDatePlaceholder: "Select a date to close",
+      
+      // Shift-based closures
+      shiftClosuresLabel: "Shift-Based Closures",
+      shiftClosuresDesc: "Close specific shifts (lunch or dinner) on certain dates",
+      addShiftClosure: "Add Shift Closure",
+      shiftType: "Shift Type",
+      fullDay: "Full Day",
+      lunchOnly: "Lunch Only",
+      dinnerOnly: "Dinner Only",
+      noShiftClosures: "No shift-based closures set",
       
       // Weekly Closures
       weeklyClosuresLabel: "Weekly Closures",
@@ -852,6 +877,10 @@ export default function AdminDashboard() {
       availabilityDescription: "配置每种预订类型在一周中哪些天可用。这控制客户何时可以预订无菜单料理或单点餐饮。",
       omakaseAvailabilityLabel: "无菜单料理可用天数",
       diningAvailabilityLabel: "单点餐饮可用天数",
+      diningShiftLabel: "可用班次",
+      lunchShift: "午餐",
+      dinnerShift: "晚餐",
+      noShiftsWarning: "至少必须选择一个班次",
       availabilityHelpText: "选择此预订类型可用的天数",
       loadingAvailabilitySettings: "正在加载可用性设置...",
       availabilityNote: "注意：客户只能在启用的天数预订所选的预订类型",
@@ -865,6 +894,16 @@ export default function AdminDashboard() {
       noClosedDates: "目前没有关闭的日期",
       loadingClosedDates: "正在加载关闭日期...",
       closedDatePlaceholder: "选择要关闭的日期",
+      
+      // Shift-based closures
+      shiftClosuresLabel: "班次关闭",
+      shiftClosuresDesc: "关闭特定日期的特定班次（午餐或晚餐）",
+      addShiftClosure: "添加班次关闭",
+      shiftType: "班次类型",
+      fullDay: "全天",
+      lunchOnly: "仅午餐",
+      dinnerOnly: "仅晚餐",
+      noShiftClosures: "未设置班次关闭",
       
       // Weekly Closures
       weeklyClosuresLabel: "每周关闭",
@@ -1063,7 +1102,16 @@ export default function AdminDashboard() {
         
         setAvailabilitySettings({
           omakaseAvailableDays: omakaseWeekdays,
-          diningAvailableDays: diningWeekdays
+          diningAvailableDays: diningWeekdays,
+          diningAvailableShifts: data.settings.diningAvailableShifts || {
+            0: ['lunch', 'dinner'],
+            1: ['lunch', 'dinner'],
+            2: ['lunch', 'dinner'],
+            3: ['lunch', 'dinner'],
+            4: ['lunch', 'dinner'],
+            5: ['lunch', 'dinner'],
+            6: ['lunch', 'dinner']
+          }
         })
       }
       setAvailabilityLoaded(true)
@@ -1082,6 +1130,7 @@ export default function AdminDashboard() {
       if (data.success) {
         setClosedDates(data.closedDates || [])
         setClosedWeekdays(data.closedWeekdays || [])
+        setShiftClosures(data.shiftClosures || [])
         
         // Handle holidays more robustly
         const savedHolidays = data.holidays || []
@@ -1127,7 +1176,8 @@ export default function AdminDashboard() {
         body: JSON.stringify({ 
           closedDates,
           closedWeekdays,
-          holidays 
+          holidays,
+          shiftClosures 
         })
       })
       
@@ -1176,7 +1226,8 @@ export default function AdminDashboard() {
         body: JSON.stringify({ 
           closedDates: updatedDates,  // Use updated dates
           closedWeekdays,
-          holidays 
+          holidays,
+          shiftClosures 
         })
       })
       
@@ -1211,7 +1262,8 @@ export default function AdminDashboard() {
         body: JSON.stringify({ 
           closedDates: updatedDates,  // Use updated dates
           closedWeekdays,
-          holidays 
+          holidays,
+          shiftClosures 
         })
       })
       
@@ -1250,7 +1302,8 @@ export default function AdminDashboard() {
         body: JSON.stringify({ 
           closedDates,
           closedWeekdays: updatedWeekdays,  // Send getDay() values directly
-          holidays 
+          holidays,
+          shiftClosures 
         })
       })
       
@@ -1295,7 +1348,8 @@ export default function AdminDashboard() {
         body: JSON.stringify({ 
           closedDates,
           closedWeekdays,
-          holidays: updatedHolidays  // Use the updated holidays directly
+          holidays: updatedHolidays,  // Use the updated holidays directly
+          shiftClosures
         })
       })
       
@@ -1331,7 +1385,8 @@ export default function AdminDashboard() {
         body: JSON.stringify({ 
           closedDates,
           closedWeekdays,
-          holidays: updatedHolidays  // Use the updated holidays directly
+          holidays: updatedHolidays,  // Use the updated holidays directly
+          shiftClosures
         })
       })
       
@@ -1372,9 +1427,51 @@ export default function AdminDashboard() {
       ? currentDays.filter(d => d !== weekdayValue)
       : [...currentDays, weekdayValue].sort()
     
+    // When removing a day, also remove its shifts
+    const updatedShifts = { ...availabilitySettings.diningAvailableShifts }
+    if (!updatedDays.includes(weekdayValue)) {
+      updatedShifts[weekdayValue] = []
+    } else if (!updatedShifts[weekdayValue] || updatedShifts[weekdayValue].length === 0) {
+      // When adding a day, default to both shifts
+      updatedShifts[weekdayValue] = ['lunch', 'dinner']
+    }
+    
     setAvailabilitySettings({
       ...availabilitySettings,
-      diningAvailableDays: updatedDays
+      diningAvailableDays: updatedDays,
+      diningAvailableShifts: updatedShifts
+    })
+  }
+
+  const toggleDiningShift = (weekdayValue: number, shift: 'lunch' | 'dinner') => {
+    const currentShifts = availabilitySettings.diningAvailableShifts[weekdayValue] || []
+    let updatedShifts: ('lunch' | 'dinner')[]
+    
+    if (currentShifts.includes(shift)) {
+      // Remove the shift
+      updatedShifts = currentShifts.filter(s => s !== shift)
+    } else {
+      // Add the shift
+      updatedShifts = [...currentShifts, shift].sort()
+    }
+    
+    // Update dining available days based on shifts
+    let updatedDays = [...availabilitySettings.diningAvailableDays]
+    if (updatedShifts.length === 0) {
+      // No shifts available, remove the day
+      updatedDays = updatedDays.filter(d => d !== weekdayValue)
+    } else if (!updatedDays.includes(weekdayValue)) {
+      // Has shifts but day not in list, add it
+      updatedDays = [...updatedDays, weekdayValue].sort()
+    }
+    
+    setAvailabilitySettings({
+      ...availabilitySettings,
+      diningAvailableDays: updatedDays,
+      diningAvailableShifts: {
+        ...availabilitySettings.diningAvailableShifts,
+        [weekdayValue]: updatedShifts
+      }
     })
   }
 
@@ -1454,7 +1551,8 @@ export default function AdminDashboard() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           omakaseAvailableDays: availabilitySettings.omakaseAvailableDays,
-          diningAvailableDays: availabilitySettings.diningAvailableDays
+          diningAvailableDays: availabilitySettings.diningAvailableDays,
+          diningAvailableShifts: availabilitySettings.diningAvailableShifts
         })
       })
 
@@ -1463,7 +1561,9 @@ export default function AdminDashboard() {
       if (data.success) {
         // Convert getDay() values to day names for display
         const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
-        const omakaseDays = availabilitySettings.omakaseAvailableDays.map(pos => dayNames[pos]).join(', ')
+        const omakaseDays = availabilitySettings.omakaseAvailableDays.length > 0 
+          ? availabilitySettings.omakaseAvailableDays.map(pos => dayNames[pos]).join(', ')
+          : 'Closed (no days selected)'
         const diningDays = availabilitySettings.diningAvailableDays.map(pos => dayNames[pos]).join(', ')
         toast({
           title: "Availability Settings Saved! 📅",
@@ -1480,6 +1580,112 @@ export default function AdminDashboard() {
       })
     } finally {
       setSavingAvailability(false)
+    }
+  }
+
+  const addShiftClosure = async () => {
+    if (!newShiftClosure.date) {
+      toast({
+        title: "⚠️ Please select a date",
+        description: "A date is required for shift closure",
+      })
+      return
+    }
+
+    // Check if this date already has a shift closure
+    const existingClosure = shiftClosures.find(sc => sc.date === newShiftClosure.date)
+    if (existingClosure) {
+      toast({
+        title: "⚠️ Date already has a shift closure",
+        description: `${newShiftClosure.date} already has a ${existingClosure.type.replace('_', ' ')} closure`,
+      })
+      return
+    }
+
+    // Check if this date is already fully closed
+    if (closedDates.includes(newShiftClosure.date)) {
+      toast({
+        title: "⚠️ Date is already fully closed",
+        description: `${newShiftClosure.date} is already marked as fully closed`,
+      })
+      return
+    }
+
+    const updatedShiftClosures = [...shiftClosures, newShiftClosure].sort((a, b) => a.date.localeCompare(b.date))
+    setShiftClosures(updatedShiftClosures)
+    setNewShiftClosure({ date: '', type: 'full_day' })
+
+    // Auto-save
+    try {
+      const response = await fetch('/api/save-closed-dates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          closedDates,
+          closedWeekdays,
+          holidays,
+          shiftClosures: updatedShiftClosures
+        })
+      })
+      
+      const data = await response.json()
+      
+      if (data.success) {
+        const shiftTypeText = newShiftClosure.type === 'lunch_only' ? 'lunch' : 
+                              newShiftClosure.type === 'dinner_only' ? 'dinner' : 'full day'
+        toast({
+          title: "Shift closure added! 🕐",
+          description: `${newShiftClosure.date} - ${shiftTypeText} is now closed`,
+        })
+      } else {
+        throw new Error(data.error)
+      }
+    } catch (error) {
+      console.error('Failed to save:', error)
+      // Revert on error
+      setShiftClosures(shiftClosures)
+      toast({
+        title: "Failed to add shift closure ❌",
+        description: "Please try again",
+      })
+    }
+  }
+
+  const removeShiftClosure = async (dateToRemove: string) => {
+    const updatedShiftClosures = shiftClosures.filter(sc => sc.date !== dateToRemove)
+    setShiftClosures(updatedShiftClosures)
+
+    // Auto-save
+    try {
+      const response = await fetch('/api/save-closed-dates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          closedDates,
+          closedWeekdays,
+          holidays,
+          shiftClosures: updatedShiftClosures
+        })
+      })
+      
+      const data = await response.json()
+      
+      if (data.success) {
+        toast({
+          title: "Shift closure removed! 🕐",
+          description: `${dateToRemove} shift restrictions removed`,
+        })
+      } else {
+        throw new Error(data.error)
+      }
+    } catch (error) {
+      console.error('Failed to save:', error)
+      // Revert on error
+      setShiftClosures(shiftClosures)
+      toast({
+        title: "Failed to remove shift closure ❌",
+        description: "Please try again",
+      })
     }
   }
 
@@ -3699,7 +3905,7 @@ export default function AdminDashboard() {
                           </div>
                           
                           {availabilitySettings.omakaseAvailableDays.length === 0 && (
-                            <p className="text-sm text-red-600 italic mt-3">⚠️ Omakase must be available on at least one day</p>
+                            <p className="text-sm text-amber-600 italic mt-3">ℹ️ Omakase reservations are currently closed (no days selected)</p>
                           )}
                         </div>
 
@@ -3711,7 +3917,7 @@ export default function AdminDashboard() {
                           </h4>
                           <p className="text-sm text-charcoal/60 mb-4">{t.availabilityHelpText}</p>
                           
-                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                          <div className="space-y-3">
                             {/* Display weekdays in Sunday-first order using getDay() values (0=Sunday, 1=Monday, etc.) */}
                             {[
                               { name: t.weekdays[0], weekdayValue: 0 }, // Sunday = 0
@@ -3721,19 +3927,56 @@ export default function AdminDashboard() {
                               { name: t.weekdays[4], weekdayValue: 4 }, // Thursday = 4
                               { name: t.weekdays[5], weekdayValue: 5 }, // Friday = 5
                               { name: t.weekdays[6], weekdayValue: 6 }, // Saturday = 6
-                            ].map((day) => (
-                              <button
-                                key={day.weekdayValue}
-                                onClick={() => toggleDiningDay(day.weekdayValue)}
-                                className={`p-3 rounded-lg text-sm font-medium transition-all duration-200 ${
-                                  availabilitySettings.diningAvailableDays.includes(day.weekdayValue)
-                                    ? 'bg-blue-500 text-white shadow-md'
-                                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                                }`}
-                              >
-                                {day.name}
-                              </button>
-                            ))}
+                            ].map((day) => {
+                              const shifts = availabilitySettings.diningAvailableShifts[day.weekdayValue] || []
+                              const hasLunch = shifts.includes('lunch')
+                              const hasDinner = shifts.includes('dinner')
+                              const dayEnabled = hasLunch || hasDinner
+                              
+                              return (
+                                <div key={day.weekdayValue} className="flex items-center gap-2 p-2 bg-white rounded-lg">
+                                  <button
+                                    onClick={() => toggleDiningDay(day.weekdayValue)}
+                                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 min-w-[80px] ${
+                                      dayEnabled
+                                        ? 'bg-blue-500 text-white shadow-md'
+                                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                    }`}
+                                  >
+                                    {day.name}
+                                  </button>
+                                  
+                                  {dayEnabled && (
+                                    <div className="flex gap-2 ml-2">
+                                      <button
+                                        onClick={() => toggleDiningShift(day.weekdayValue, 'lunch')}
+                                        className={`px-3 py-1 rounded text-xs font-medium transition-all duration-200 ${
+                                          hasLunch
+                                            ? 'bg-amber-500 text-white'
+                                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                        }`}
+                                      >
+                                        {t.lunchShift}
+                                      </button>
+                                      <button
+                                        onClick={() => toggleDiningShift(day.weekdayValue, 'dinner')}
+                                        className={`px-3 py-1 rounded text-xs font-medium transition-all duration-200 ${
+                                          hasDinner
+                                            ? 'bg-indigo-600 text-white'
+                                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                        }`}
+                                      >
+                                        {t.dinnerShift}
+                                      </button>
+                                    </div>
+                                  )}
+                                  
+                                  {dayEnabled && !hasLunch && !hasDinner && (
+                                    <span className="text-xs text-red-600 ml-2">{t.noShiftsWarning}</span>
+                                  )}
+                                </div>
+                              )
+                            })}
                           </div>
                           
                           {availabilitySettings.diningAvailableDays.length === 0 && (
@@ -3746,11 +3989,9 @@ export default function AdminDashboard() {
                           <button
                             onClick={saveAvailabilitySettings}
                             disabled={savingAvailability || !availabilityLoaded || 
-                              availabilitySettings.omakaseAvailableDays.length === 0 || 
                               availabilitySettings.diningAvailableDays.length === 0}
                             className={`group relative px-8 py-3 rounded-xl transition-all duration-300 font-semibold shadow-lg transform ${
                               (availabilityLoaded && !savingAvailability && 
-                               availabilitySettings.omakaseAvailableDays.length > 0 && 
                                availabilitySettings.diningAvailableDays.length > 0)
                                 ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white hover:from-purple-700 hover:to-indigo-700 hover:shadow-xl hover:-translate-y-0.5' 
                                 : 'bg-gray-300 text-gray-500 cursor-not-allowed'
@@ -3758,7 +3999,6 @@ export default function AdminDashboard() {
                           >
                             <span>{savingAvailability ? t.loading : 'Save Availability Settings'}</span>
                             {(availabilityLoaded && !savingAvailability && 
-                              availabilitySettings.omakaseAvailableDays.length > 0 && 
                               availabilitySettings.diningAvailableDays.length > 0) && (
                               <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                             )}
@@ -3880,6 +4120,65 @@ export default function AdminDashboard() {
                           
                           {closedWeekdays.length === 0 && (
                             <p className="text-sm text-charcoal/60 italic mt-3">{t.noWeeklyClosures}</p>
+                          )}
+                        </div>
+
+                        {/* Shift-Based Closures */}
+                        <div className="p-4 bg-white/50 rounded-xl border border-copper/10 mb-4">
+                          <h4 className="font-semibold text-ink-black mb-3">{t.shiftClosuresLabel}</h4>
+                          <p className="text-sm text-charcoal/60 mb-4">{t.shiftClosuresDesc}</p>
+                          
+                          {/* Add new shift closure */}
+                          <div className="flex gap-2 mb-4">
+                            <input
+                              type="date"
+                              value={newShiftClosure.date}
+                              onChange={(e) => setNewShiftClosure({ ...newShiftClosure, date: e.target.value })}
+                              min={format(new Date(), 'yyyy-MM-dd')}
+                              className="flex-1 px-3 py-2 border border-copper/20 rounded-lg focus:ring-2 focus:ring-copper/50 focus:border-copper"
+                            />
+                            <select
+                              value={newShiftClosure.type}
+                              onChange={(e) => setNewShiftClosure({ ...newShiftClosure, type: e.target.value as 'full_day' | 'lunch_only' | 'dinner_only' })}
+                              className="px-3 py-2 border border-copper/20 rounded-lg focus:ring-2 focus:ring-copper/50 focus:border-copper"
+                            >
+                              <option value="full_day">{t.fullDay}</option>
+                              <option value="lunch_only">{t.lunchOnly}</option>
+                              <option value="dinner_only">{t.dinnerOnly}</option>
+                            </select>
+                            <button
+                              onClick={addShiftClosure}
+                              disabled={!newShiftClosure.date}
+                              className="px-4 py-2 bg-gradient-to-r from-copper to-amber-700 text-white rounded-lg hover:from-copper/90 hover:to-amber-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+                            >
+                              {t.addShiftClosure}
+                            </button>
+                          </div>
+                          
+                          {/* List of shift closures */}
+                          {shiftClosures.length === 0 ? (
+                            <p className="text-charcoal/60 italic text-sm">{t.noShiftClosures}</p>
+                          ) : (
+                            <div className="space-y-2 max-h-40 overflow-y-auto">
+                              {shiftClosures.map((closure) => (
+                                <div key={closure.date} className="flex items-center justify-between p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                                  <div className="flex-1">
+                                    <div className="font-medium text-gray-800">
+                                      {closure.date} - {closure.type === 'lunch_only' ? t.lunchOnly : closure.type === 'dinner_only' ? t.dinnerOnly : t.fullDay}
+                                    </div>
+                                    <div className="text-sm text-gray-600">
+                                      {new Date(closure.date).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
+                                    </div>
+                                  </div>
+                                  <button
+                                    onClick={() => removeShiftClosure(closure.date)}
+                                    className="px-3 py-1 bg-red-500 hover:bg-red-600 text-white rounded-md text-sm font-medium transition-colors duration-200"
+                                  >
+                                    {t.removeClosedDate}
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
                           )}
                         </div>
 

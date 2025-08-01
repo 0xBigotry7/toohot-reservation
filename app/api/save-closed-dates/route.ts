@@ -8,7 +8,7 @@ const supabaseAdmin = createClient(
 
 export async function POST(request: NextRequest) {
   try {
-    const { closedDates, closedWeekdays, holidays } = await request.json()
+    const { closedDates, closedWeekdays, holidays, shiftClosures } = await request.json()
 
     // Validate closed dates
     if (!Array.isArray(closedDates)) {
@@ -63,6 +63,38 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Validate shift closures
+    if (shiftClosures && !Array.isArray(shiftClosures)) {
+      return NextResponse.json(
+        { success: false, error: 'shiftClosures must be an array' },
+        { status: 400 }
+      )
+    }
+
+    // Validate each shift closure
+    if (shiftClosures) {
+      for (const closure of shiftClosures) {
+        if (!closure.date || !closure.type) {
+          return NextResponse.json(
+            { success: false, error: 'Each shift closure must have date and type' },
+            { status: 400 }
+          )
+        }
+        if (!['full_day', 'lunch_only', 'dinner_only'].includes(closure.type)) {
+          return NextResponse.json(
+            { success: false, error: 'Shift closure type must be full_day, lunch_only, or dinner_only' },
+            { status: 400 }
+          )
+        }
+        if (!dateRegex.test(closure.date)) {
+          return NextResponse.json(
+            { success: false, error: `Invalid date format in shift closure: ${closure.date}` },
+            { status: 400 }
+          )
+        }
+      }
+    }
+
     // Remove duplicates and sort dates
     const uniqueSortedDates = Array.from(new Set(closedDates)).sort()
     const uniqueSortedWeekdays = Array.from(new Set(closedWeekdays)).sort()
@@ -75,7 +107,8 @@ export async function POST(request: NextRequest) {
         setting_value: {
           dates: uniqueSortedDates,
           closedWeekdays: uniqueSortedWeekdays,
-          holidays: holidays
+          holidays: holidays,
+          shiftClosures: shiftClosures || []
         },
         updated_at: new Date().toISOString()
       }, {
@@ -93,7 +126,8 @@ export async function POST(request: NextRequest) {
     console.log('Enhanced closed dates settings saved successfully:', { 
       closedDates: uniqueSortedDates,
       closedWeekdays: uniqueSortedWeekdays,
-      holidaysCount: holidays.length
+      holidaysCount: holidays.length,
+      shiftClosuresCount: shiftClosures?.length || 0
     })
 
     return NextResponse.json({
@@ -101,7 +135,8 @@ export async function POST(request: NextRequest) {
       message: 'Closed dates settings saved successfully',
       closedDates: uniqueSortedDates,
       closedWeekdays: uniqueSortedWeekdays,
-      holidays: holidays
+      holidays: holidays,
+      shiftClosures: shiftClosures || []
     })
   } catch (error) {
     console.error('Error saving closed dates settings:', error)
