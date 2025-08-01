@@ -9,6 +9,7 @@ import Image from 'next/image'
 import TrendChart from '../components/TrendChart'
 import { useRouter } from 'next/navigation'
 import LoginForm from '../components/LoginForm'
+import CommunicationHistoryModal from '../components/CommunicationHistoryModal'
 
 interface Reservation {
   id: string
@@ -203,6 +204,10 @@ export default function AdminDashboard() {
   const [cancellingReservation, setCancellingReservation] = useState<Reservation | null>(null)
   const [cancellationReason, setCancellationReason] = useState('')
   const [processingCancellation, setProcessingCancellation] = useState(false)
+  
+  // Communication history modal state
+  const [showCommunicationModal, setShowCommunicationModal] = useState(false)
+  const [communicationReservation, setCommunicationReservation] = useState<Reservation | null>(null)
 
   // Helper function to parse dates in local timezone (fixes UTC/timezone bugs)
   const parseLocalDate = (dateStr: string) => {
@@ -539,6 +544,8 @@ export default function AdminDashboard() {
       confirm: "Confirm",
       edit: "Edit",
       cancelAction: "Cancel",
+      communicationHistory: "Communication History",
+      viewCommunications: "View Communications",
       
       // Status Labels
       pending: "Pending",
@@ -758,6 +765,8 @@ export default function AdminDashboard() {
       confirm: "确认",
       edit: "编辑",
       cancelAction: "取消",
+      communicationHistory: "通信历史",
+      viewCommunications: "查看通信记录",
       
       // Status Labels
       pending: "待确认",
@@ -1518,7 +1527,11 @@ export default function AdminDashboard() {
       // Combine and mark reservation types
       const omakaseReservations = (omakaseResponse.data || []).map(r => ({ ...r, type: 'omakase' as const }));
       const diningReservations = (diningResponse.data || []).map(r => ({ ...r, type: 'dining' as const }));
-      const allReservations = [...omakaseReservations, ...diningReservations];
+      
+      // Filter out omakase reservations with pending payment status
+      const filteredOmakaseReservations = omakaseReservations.filter(r => r.payment_status !== 'pending');
+      
+      const allReservations = [...filteredOmakaseReservations, ...diningReservations];
       
       // Sort by date and time
       allReservations.sort((a, b) => {
@@ -1815,8 +1828,7 @@ export default function AdminDashboard() {
 
       const updatedReservation = await response.json()
 
-      // Log cancellation for monitoring (emails now handled by Supabase)
-      console.log(`Reservation ${reservationId} cancelled (emails handled by Supabase)`)
+      // Database triggers will handle cancellation email
       
       toast({
         title: 'Reservation Cancelled',
@@ -2698,6 +2710,22 @@ export default function AdminDashboard() {
                             </div>
                           )}
 
+                          {/* View Communications Button */}
+                          <div className="mt-4 flex justify-end">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setCommunicationReservation(reservation);
+                                setShowCommunicationModal(true);
+                              }}
+                              className="group relative liquid-glass bg-gradient-to-r from-purple-500/80 to-indigo-600/80 text-white px-4 py-2 rounded-xl hover:from-purple-600 hover:to-indigo-700 transition-all duration-300 font-semibold text-sm shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center gap-1 backdrop-blur-sm border border-white/20"
+                            >
+                              <span className="text-sm">📧</span>
+                              <span>{t.viewCommunications}</span>
+                              <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-sand-beige/20 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                            </button>
+                          </div>
+
                           {reservation.special_requests && (
                             <div className="mt-3 p-3 bg-white/30 rounded-lg">
                               <span className="font-semibold text-copper">{t.specialRequests}:</span>
@@ -2908,6 +2936,22 @@ export default function AdminDashboard() {
                                 </button>
                               </div>
                             )}
+
+                            {/* View Communications Button */}
+                            <div className="mt-4 flex justify-end">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setCommunicationReservation(reservation);
+                                  setShowCommunicationModal(true);
+                                }}
+                                className="group relative liquid-glass bg-gradient-to-r from-purple-500/80 to-indigo-600/80 text-white px-4 py-2 rounded-xl hover:from-purple-600 hover:to-indigo-700 transition-all duration-300 font-semibold text-sm shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center gap-1 backdrop-blur-sm border border-white/20"
+                              >
+                                <span className="text-sm">📧</span>
+                                <span>{t.viewCommunications}</span>
+                                <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-sand-beige/20 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                              </button>
+                            </div>
 
                             {reservation.special_requests && (
                               <div className="mt-3 p-3 bg-white/30 rounded-lg">
@@ -4154,6 +4198,22 @@ export default function AdminDashboard() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Communication History Modal */}
+      {showCommunicationModal && communicationReservation && (
+        <CommunicationHistoryModal
+          isOpen={showCommunicationModal}
+          onClose={() => {
+            setShowCommunicationModal(false);
+            setCommunicationReservation(null);
+          }}
+          reservationId={communicationReservation.id}
+          reservationType={communicationReservation.type}
+          customerName={communicationReservation.customer_name}
+          customerEmail={communicationReservation.customer_email}
+          isChineseMode={language === 'zh'}
+        />
       )}
 
       </div>
