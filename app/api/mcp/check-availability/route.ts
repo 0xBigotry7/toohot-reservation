@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { getSeatCapacitySettings, isDateClosed, isReservationTypeAvailable, isShiftClosed } from '@/lib/server-utils';
+import { getSeatCapacitySettings, getCapacityForTime, isDateClosed, isReservationTypeAvailable, isShiftClosed } from '@/lib/server-utils';
 
 const supabaseAdmin = createClient(
   process.env.SUPABASE_URL!,
@@ -108,19 +108,28 @@ export async function POST(request: NextRequest) {
     // Get seat capacity settings from database
     const capacitySettings = await getSeatCapacitySettings();
     
-    // Determine table capacity based on reservation type
-    const tableCapacity = type === 'omakase' ? capacitySettings.omakaseSeats : capacitySettings.diningSeats;
+    // Determine table capacity based on reservation type and time
+    let tableCapacity: number;
+    if (capacitySettings.type === 'time_interval' && time) {
+      tableCapacity = getCapacityForTime(capacitySettings, type as 'omakase' | 'dining', time);
+    } else {
+      // Legacy format or no time provided
+      tableCapacity = type === 'omakase' ? capacitySettings.omakaseSeats : capacitySettings.diningSeats;
+    }
+    
     const tableName = type === 'omakase' ? 'omakase_reservations' : 'dining_reservations';
 
-    console.log(`Checking availability for ${type} on ${date} for ${partySize} people`);
+    console.log(`Checking availability for ${type} on ${date} at ${time || 'any time'} for ${partySize} people`);
     console.log(`Table capacity: ${tableCapacity} (source: ${capacitySettings.source})`);
 
-    // Check existing reservations for the date (excluding cancelled ones)
-    const { data: existingReservations, error } = await supabaseAdmin
+    // Check existing reservations for the date and time interval (excluding cancelled ones)
+    let query = supabaseAdmin
       .from(tableName)
-      .select('party_size')
+      .select('party_size, reservation_time')
       .eq('reservation_date', date)
       .neq('status', 'cancelled');
+
+    const { data: existingReservations, error } = await query;
 
     if (error) {
       console.error('Error checking existing reservations:', error);
@@ -130,10 +139,74 @@ export async function POST(request: NextRequest) {
       }, { status: 500 });
     }
 
-    // Calculate total reserved seats
-    const totalReservedSeats = existingReservations.reduce((sum, reservation) => {
-      return sum + (reservation.party_size || 0);
-    }, 0);
+    // Calculate total reserved seats for the specific time interval
+    let totalReservedSeats = 0;
+    
+    if (capacitySettings.type === 'time_interval' && time) {
+      // For time interval capacity, only count reservations in the same interval
+      const intervals = capacitySettings.data[type]?.intervals || [];
+      const [requestHours, requestMinutes] = time.split(':').map(Number);
+      const requestTimeInMinutes = requestHours * 60 + requestMinutes;
+      
+      // Find which interval this time belongs to
+      let currentInterval = null;
+      for (const interval of intervals) {
+        const [startHours, startMinutes] = interval.startTime.split(':').map(Number);
+        const [endHours, endMinutes] = interval.endTime.split(':').map(Number);
+        
+        const startInMinutes = startHours * 60 + startMinutes;
+        let endInMinutes = endHours * 60 + endMinutes;
+        
+        // Handle overnight intervals
+        if (endInMinutes < startInMinutes) {
+          endInMinutes += 24 * 60;
+        }
+        
+        if (requestTimeInMinutes >= startInMinutes && requestTimeInMinutes < endInMinutes) {
+          currentInterval = interval;
+          break;
+        }
+        
+        // Check for overnight case
+        if (endInMinutes > 24 * 60 && requestTimeInMinutes < (endInMinutes - 24 * 60)) {
+          currentInterval = interval;
+          break;
+        }
+      }
+      
+      // Count only reservations in the same interval
+      if (currentInterval) {
+        totalReservedSeats = existingReservations.reduce((sum, reservation) => {
+          if (!reservation.reservation_time) return sum;
+          
+          const [resHours, resMinutes] = reservation.reservation_time.split(':').map(Number);
+          const resTimeInMinutes = resHours * 60 + resMinutes;
+          
+          const [startHours, startMinutes] = currentInterval.startTime.split(':').map(Number);
+          const [endHours, endMinutes] = currentInterval.endTime.split(':').map(Number);
+          
+          const startInMinutes = startHours * 60 + startMinutes;
+          let endInMinutes = endHours * 60 + endMinutes;
+          
+          if (endInMinutes < startInMinutes) {
+            endInMinutes += 24 * 60;
+          }
+          
+          // Check if this reservation is in the same interval
+          if ((resTimeInMinutes >= startInMinutes && resTimeInMinutes < endInMinutes) ||
+              (endInMinutes > 24 * 60 && resTimeInMinutes < (endInMinutes - 24 * 60))) {
+            return sum + (reservation.party_size || 0);
+          }
+          
+          return sum;
+        }, 0);
+      }
+    } else {
+      // Legacy format: count all reservations for the day
+      totalReservedSeats = existingReservations.reduce((sum, reservation) => {
+        return sum + (reservation.party_size || 0);
+      }, 0);
+    }
 
     const availableSeats = tableCapacity - totalReservedSeats;
     const isAvailable = availableSeats >= partySize;

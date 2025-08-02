@@ -19,32 +19,46 @@ export async function GET() {
 
     console.log('🗄️ Database query result:', { dbSettings, dbError })
 
-    let omakaseSeats: number
-    let diningSeats: number
-    let source: string
-
     if (dbSettings && !dbError && dbSettings.setting_value) {
-      // Use database settings if available
-      omakaseSeats = dbSettings.setting_value.omakaseSeats
-      diningSeats = dbSettings.setting_value.diningSeats
-      source = 'database'
-      console.log('Loaded seat capacity settings from database:', { omakaseSeats, diningSeats })
+      // Check if it's the new time interval format
+      if (dbSettings.setting_value.type === 'time_interval') {
+        console.log('Loaded time interval capacity settings from database')
+        
+        return NextResponse.json({
+          success: true,
+          settings: dbSettings.setting_value,
+          source: 'database'
+        })
+      } else {
+        // Legacy format
+        const omakaseSeats = dbSettings.setting_value.omakaseSeats
+        const diningSeats = dbSettings.setting_value.diningSeats
+        console.log('Loaded legacy seat capacity settings from database:', { omakaseSeats, diningSeats })
+        
+        return NextResponse.json({
+          success: true,
+          settings: {
+            omakaseSeats,
+            diningSeats
+          },
+          source: 'database'
+        })
+      }
     } else {
       // Fall back to environment variables if no database settings
-      omakaseSeats = parseInt(process.env.OMAKASE_SEATS || '12', 10)
-      diningSeats = parseInt(process.env.DINING_SEATS || '24', 10)
-      source = 'environment'
+      const omakaseSeats = parseInt(process.env.OMAKASE_SEATS || '12', 10)
+      const diningSeats = parseInt(process.env.DINING_SEATS || '24', 10)
       console.log('Loaded seat capacity settings from environment:', { omakaseSeats, diningSeats })
+      
+      return NextResponse.json({
+        success: true,
+        settings: {
+          omakaseSeats,
+          diningSeats
+        },
+        source: 'environment'
+      })
     }
-
-    return NextResponse.json({
-      success: true,
-      settings: {
-        omakaseSeats,
-        diningSeats
-      },
-      source // For debugging - shows whether settings came from DB or env
-    })
   } catch (error) {
     console.error('Error fetching seat capacity settings:', error)
     return NextResponse.json(

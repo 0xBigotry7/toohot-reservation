@@ -19,10 +19,19 @@ export async function getSeatCapacitySettings() {
       .single()
 
     if (dbSettings && !dbError && dbSettings.setting_value) {
-      // Use database settings if available
+      // Check if using new time interval format
+      if (dbSettings.setting_value.type === 'time_interval') {
+        console.log('Using time interval capacity settings')
+        return { 
+          type: 'time_interval',
+          data: dbSettings.setting_value,
+          source: 'database' 
+        }
+      }
+      // Legacy format support
       const omakaseSeats = dbSettings.setting_value.omakaseSeats
       const diningSeats = dbSettings.setting_value.diningSeats
-      console.log('Loaded seat capacity settings from database:', { omakaseSeats, diningSeats })
+      console.log('Loaded legacy seat capacity settings from database:', { omakaseSeats, diningSeats })
       return { omakaseSeats, diningSeats, source: 'database' }
     } else {
       // Fall back to environment variables if no database settings
@@ -36,6 +45,57 @@ export async function getSeatCapacitySettings() {
     // Return default settings on error
     return { omakaseSeats: 12, diningSeats: 24, source: 'default' }
   }
+}
+
+// Helper function to get capacity for a specific time
+export function getCapacityForTime(capacitySettings: any, reservationType: 'omakase' | 'dining', timeStr: string): number {
+  // If using time interval format
+  if (capacitySettings.type === 'time_interval' && capacitySettings.data) {
+    const intervals = capacitySettings.data[reservationType]?.intervals || []
+    
+    // If no intervals defined, return 0
+    if (intervals.length === 0) {
+      console.warn(`No time intervals defined for ${reservationType}`)
+      return 0
+    }
+    
+    // Convert time string to minutes for comparison
+    const [hours, minutes] = timeStr.split(':').map(Number)
+    const timeInMinutes = hours * 60 + minutes
+    
+    // Find the interval that contains this time
+    for (const interval of intervals) {
+      const [startHours, startMinutes] = interval.startTime.split(':').map(Number)
+      const [endHours, endMinutes] = interval.endTime.split(':').map(Number)
+      
+      const startInMinutes = startHours * 60 + startMinutes
+      let endInMinutes = endHours * 60 + endMinutes
+      
+      // Handle overnight intervals (e.g., 22:00 to 02:00)
+      if (endInMinutes <= startInMinutes) {
+        endInMinutes += 24 * 60
+      }
+      
+      // Adjust time for overnight comparison
+      let adjustedTimeInMinutes = timeInMinutes
+      if (timeInMinutes < startInMinutes && endInMinutes > 24 * 60) {
+        adjustedTimeInMinutes += 24 * 60
+      }
+      
+      // Check if time falls within this interval
+      if (adjustedTimeInMinutes >= startInMinutes && adjustedTimeInMinutes < endInMinutes) {
+        return Math.max(0, interval.capacity || 0) // Ensure non-negative
+      }
+    }
+    
+    // No matching interval found, return 0
+    console.log(`No interval found for ${reservationType} at ${timeStr}`)
+    return 0
+  }
+  
+  // Legacy format
+  const capacity = reservationType === 'omakase' ? capacitySettings.omakaseSeats : capacitySettings.diningSeats
+  return Math.max(0, capacity || 0) // Ensure non-negative
 }
 
 // Helper function to get enhanced closed dates from database
