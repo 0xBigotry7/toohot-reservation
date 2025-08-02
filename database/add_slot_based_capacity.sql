@@ -1,35 +1,11 @@
 -- Add slot-based capacity settings to admin_settings table
--- This migration adds support for OpenTable-style slot-based capacity configuration
+-- This migration creates a NEW setting key to avoid breaking production
+-- The existing 'seat_capacity' key remains untouched
 
--- Update any existing time_interval settings to slot_based format
-UPDATE admin_settings 
-SET setting_value = jsonb_build_object(
-  'type', 'slot_based',
-  'slotDuration', 30,
-  'omakase', jsonb_build_array(),
-  'dining', jsonb_build_array()
-),
-updated_at = NOW()
-WHERE setting_key = 'seat_capacity'
-AND setting_value->>'type' = 'time_interval';
-
--- Convert legacy simple capacity to slot-based format
-UPDATE admin_settings 
-SET setting_value = jsonb_build_object(
-  'type', 'slot_based',
-  'slotDuration', 30,
-  'omakase', jsonb_build_array(),
-  'dining', jsonb_build_array()
-),
-updated_at = NOW()
-WHERE setting_key = 'seat_capacity'
-AND setting_value ? 'omakaseSeats'
-AND setting_value ? 'diningSeats';
-
--- Insert default slot-based capacity settings if they don't exist
+-- Insert default slot-based capacity settings with new key
 INSERT INTO admin_settings (setting_key, setting_value, updated_at) 
 VALUES (
-  'seat_capacity',
+  'seat_capacity_v2',
   jsonb_build_object(
     'type', 'slot_based',
     'slotDuration', 30,
@@ -44,7 +20,7 @@ SELECT setting_key,
        jsonb_pretty(setting_value) as formatted_value,
        updated_at 
 FROM admin_settings 
-WHERE setting_key = 'seat_capacity';
+WHERE setting_key IN ('seat_capacity', 'seat_capacity_v2');
 
 -- Example of how the data structure looks:
 -- {

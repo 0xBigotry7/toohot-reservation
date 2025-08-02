@@ -49,7 +49,7 @@ export async function getSeatCapacitySettings() {
 
 // Helper function to get capacity for a specific time
 export function getCapacityForTime(capacitySettings: any, reservationType: 'omakase' | 'dining', timeStr: string): number {
-  // If using slot-based format (OpenTable style)
+  // If using slot-based format
   if (capacitySettings.type === 'slot_based' && capacitySettings.data) {
     const slots = capacitySettings.data[reservationType] || []
     
@@ -113,26 +113,6 @@ export function getCapacityForTime(capacitySettings: any, reservationType: 'omak
   return Math.max(0, capacity || 0) // Ensure non-negative
 }
 
-// Helper function to get party limit for a specific time slot
-export function getPartyLimitForTime(capacitySettings: any, reservationType: 'omakase' | 'dining', timeStr: string): number {
-  // If using slot-based format (OpenTable style)
-  if (capacitySettings.type === 'slot_based' && capacitySettings.data) {
-    const slots = capacitySettings.data[reservationType] || []
-    
-    // Find exact matching slot
-    const slot = slots.find((s: any) => s.time === timeStr && s.enabled)
-    if (slot) {
-      return Math.max(0, slot.parties || 0)
-    }
-    
-    // No matching slot found
-    return 0
-  }
-  
-  // For other formats, calculate based on capacity (assume avg 4 people per party)
-  const capacity = getCapacityForTime(capacitySettings, reservationType, timeStr)
-  return Math.ceil(capacity / 4)
-}
 
 // Helper function to get enhanced closed dates from database
 export async function getClosedDatesSettings() {

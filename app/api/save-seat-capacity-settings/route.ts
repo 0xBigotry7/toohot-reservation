@@ -26,7 +26,6 @@ interface TimeIntervalCapacitySettings {
 interface TimeSlot {
   time: string
   covers: number
-  parties: number
   enabled: boolean
 }
 
@@ -41,7 +40,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
 
-    // Check if it's the slot-based format (OpenTable style)
+    // Check if it's the slot-based format
     if (body.type === 'slot_based') {
       const settings = body as SlotBasedCapacitySettings
       
@@ -60,9 +59,6 @@ export async function POST(request: NextRequest) {
         }
         if (typeof slot.covers !== 'number' || slot.covers < 0 || slot.covers > 999) {
           return 'Invalid covers. Must be between 0 and 999'
-        }
-        if (typeof slot.parties !== 'number' || slot.parties < 0 || slot.parties > 999) {
-          return 'Invalid parties. Must be between 0 and 999'
         }
         if (typeof slot.enabled !== 'boolean') {
           return 'Invalid enabled status'

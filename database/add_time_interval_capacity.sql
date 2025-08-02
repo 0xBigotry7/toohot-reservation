@@ -1,5 +1,5 @@
 -- Add time interval capacity settings to admin_settings table
--- This migration adds support for time-based capacity configuration similar to OpenTable
+-- This migration adds support for time-based capacity configuration
 
 -- First, let's create a more structured format for capacity settings
 -- The new format will support time intervals with their respective capacities
