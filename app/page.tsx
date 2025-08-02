@@ -10,6 +10,7 @@ import TrendChart from '../components/TrendChart'
 import { useRouter } from 'next/navigation'
 import LoginForm from '../components/LoginForm'
 import CommunicationHistoryModal from '../components/CommunicationHistoryModal'
+import TimeIntervalCapacity from '../components/TimeIntervalCapacity'
 
 interface Reservation {
   id: string
@@ -148,6 +149,7 @@ export default function AdminDashboard() {
     diningCapacity: 40   // Default dining capacity
   })
   const [capacityLoaded, setCapacityLoaded] = useState(false)
+  const [capacityMode, setCapacityMode] = useState<'simple' | 'timeInterval'>('simple') // Toggle between simple and time interval modes
   
   // Closed dates settings
   const [closedDates, setClosedDates] = useState<string[]>([])
@@ -655,6 +657,10 @@ export default function AdminDashboard() {
       diningCapacityLabel: "À la Carte Maximum Seats",
       capacityHelpText: "Seats (1-200)",
       loadingCapacitySettings: "Loading seat capacity settings...",
+      simpleMode: "Simple Mode",
+      timeIntervalMode: "Time Interval Mode",
+      simpleModeDescription: "Set a fixed capacity for all time slots",
+      timeIntervalModeDescription: "Set different capacities for different time intervals (like OpenTable/Resy)",
       
       // Availability Settings
       availabilitySettings: "Reservation Type Availability",
@@ -891,6 +897,10 @@ export default function AdminDashboard() {
       diningCapacityLabel: "单点餐饮最大座位数",
       capacityHelpText: "座位数 (1-200)",
       loadingCapacitySettings: "正在加载座位容量设置...",
+      simpleMode: "简单模式",
+      timeIntervalMode: "时间段模式",
+      simpleModeDescription: "为所有时间段设置固定容量",
+      timeIntervalModeDescription: "为不同时间段设置不同容量（类似OpenTable/Resy）",
       
       // Availability Settings
       availabilitySettings: "预订类型可用性",
@@ -1092,10 +1102,26 @@ export default function AdminDashboard() {
       const data = await response.json()
       
       if (data.success && data.settings) {
-        setSeatCapacity({
-          omakaseCapacity: data.settings.omakaseSeats,
-          diningCapacity: data.settings.diningSeats
-        })
+        // Check if it's time interval format
+        if (data.settings.type === 'time_interval') {
+          setCapacityMode('timeInterval')
+          // For simple view, calculate average capacity from intervals
+          const omakaseAvg = data.settings.omakase?.intervals?.reduce((sum: number, interval: any) => 
+            sum + interval.capacity, 0) / (data.settings.omakase?.intervals?.length || 1) || 12
+          const diningAvg = data.settings.dining?.intervals?.reduce((sum: number, interval: any) => 
+            sum + interval.capacity, 0) / (data.settings.dining?.intervals?.length || 1) || 24
+          setSeatCapacity({
+            omakaseCapacity: Math.round(omakaseAvg),
+            diningCapacity: Math.round(diningAvg)
+          })
+        } else {
+          // Legacy simple format
+          setCapacityMode('simple')
+          setSeatCapacity({
+            omakaseCapacity: data.settings.omakaseSeats,
+            diningCapacity: data.settings.diningSeats
+          })
+        }
       }
       setCapacityLoaded(true)
     } catch (error) {
@@ -4014,7 +4040,7 @@ export default function AdminDashboard() {
                 
                 {expandedSections.seatCapacity && (
                   <div className="px-4 pb-4">
-                    <p className="text-sm text-charcoal/70 mb-6">{t.seatCapacityDescription}</p>
+                    <p className="text-sm text-charcoal/70 mb-4">{t.seatCapacityDescription}</p>
                     
                     {!capacityLoaded ? (
                       <div className="flex items-center justify-center p-8">
@@ -4023,55 +4049,99 @@ export default function AdminDashboard() {
                       </div>
                     ) : (
                       <div className="space-y-6">
-                        <div className="flex items-center justify-between p-4 bg-white/50 rounded-xl border border-copper/10">
-                          <div className="flex-1 mr-4">
-                            <h4 className="font-semibold text-ink-black mb-2">{t.omakaseCapacityLabel}</h4>
-                            <p className="text-sm text-charcoal/60 mb-3">{t.omakaseDesc}</p>
-                            <input
-                              type="number"
-                              min="1"
-                              max="200"
-                              value={seatCapacity.omakaseCapacity}
-                              onChange={(e) => setSeatCapacity({...seatCapacity, omakaseCapacity: parseInt(e.target.value) || 1})}
-                              className="w-24 px-3 py-2 border-2 border-copper/20 rounded-lg focus:ring-2 focus:ring-copper/20 focus:border-copper/20 transition-all duration-300 bg-white text-ink-black font-semibold text-center"
-                            />
-                            <span className="ml-2 text-sm text-charcoal/60">{t.capacityHelpText}</span>
-                          </div>
-                        </div>
-                        
-                        <div className="flex items-center justify-between p-4 bg-white/50 rounded-xl border border-copper/10">
-                          <div className="flex-1 mr-4">
-                            <h4 className="font-semibold text-ink-black mb-2">{t.diningCapacityLabel}</h4>
-                            <p className="text-sm text-charcoal/60 mb-3">{t.diningDesc}</p>
-                            <input
-                              type="number"
-                              min="1"
-                              max="200"
-                              value={seatCapacity.diningCapacity}
-                              onChange={(e) => setSeatCapacity({...seatCapacity, diningCapacity: parseInt(e.target.value) || 1})}
-                              className="w-24 px-3 py-2 border-2 border-copper/20 rounded-lg focus:ring-2 focus:ring-copper/20 focus:border-copper/20 transition-all duration-300 bg-white text-ink-black font-semibold text-center"
-                            />
-                            <span className="ml-2 text-sm text-charcoal/60">{t.capacityHelpText}</span>
-                          </div>
-                        </div>
-                        
-                        {/* Save Button for Seat Capacity */}
-                        <div className="flex justify-end pt-4 border-t border-copper/10 mt-4">
+                        {/* Mode Toggle */}
+                        <div className="flex gap-2 p-1 bg-white/50 rounded-xl">
                           <button
-                            onClick={saveSeatCapacitySettings}
-                            disabled={savingCapacity || !capacityLoaded}
-                            className={`group relative px-8 py-3 rounded-xl transition-all duration-300 font-semibold shadow-lg transform ${
-                              (capacityLoaded && !savingCapacity)
-                                ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white hover:from-purple-700 hover:to-indigo-700 hover:shadow-xl hover:-translate-y-0.5' 
-                                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                            onClick={() => setCapacityMode('simple')}
+                            className={`flex-1 px-4 py-2 rounded-lg font-medium transition-all ${
+                              capacityMode === 'simple'
+                                ? 'bg-gradient-to-r from-orange-600 to-red-600 text-white shadow-lg'
+                                : 'text-charcoal/70 hover:bg-white/50'
                             }`}
                           >
-                            <span>{savingCapacity ? t.loading : 'Save Seat Capacity'}</span>
-                            {(capacityLoaded && !savingCapacity) && (
-                              <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                            )}
+                            {t.simpleMode}
+                          </button>
+                          <button
+                            onClick={() => setCapacityMode('timeInterval')}
+                            className={`flex-1 px-4 py-2 rounded-lg font-medium transition-all ${
+                              capacityMode === 'timeInterval'
+                                ? 'bg-gradient-to-r from-orange-600 to-red-600 text-white shadow-lg'
+                                : 'text-charcoal/70 hover:bg-white/50'
+                            }`}
+                          >
+                            {t.timeIntervalMode}
                           </button>
                         </div>
+
+                        <p className="text-xs text-charcoal/60">
+                          {capacityMode === 'simple' ? t.simpleModeDescription : t.timeIntervalModeDescription}
+                        </p>
+
+                        {/* Conditional Content Based on Mode */}
+                        {capacityMode === 'simple' ? (
+                          <>
+                            <div className="flex items-center justify-between p-4 bg-white/50 rounded-xl border border-copper/10">
+                              <div className="flex-1 mr-4">
+                                <h4 className="font-semibold text-ink-black mb-2">{t.omakaseCapacityLabel}</h4>
+                                <p className="text-sm text-charcoal/60 mb-3">{t.omakaseDesc}</p>
+                                <input
+                                  type="number"
+                                  min="1"
+                                  max="200"
+                                  value={seatCapacity.omakaseCapacity}
+                                  onChange={(e) => setSeatCapacity({...seatCapacity, omakaseCapacity: parseInt(e.target.value) || 1})}
+                                  className="w-24 px-3 py-2 border-2 border-copper/20 rounded-lg focus:ring-2 focus:ring-copper/20 focus:border-copper/20 transition-all duration-300 bg-white text-ink-black font-semibold text-center"
+                                />
+                                <span className="ml-2 text-sm text-charcoal/60">{t.capacityHelpText}</span>
+                              </div>
+                            </div>
+                            
+                            <div className="flex items-center justify-between p-4 bg-white/50 rounded-xl border border-copper/10">
+                              <div className="flex-1 mr-4">
+                                <h4 className="font-semibold text-ink-black mb-2">{t.diningCapacityLabel}</h4>
+                                <p className="text-sm text-charcoal/60 mb-3">{t.diningDesc}</p>
+                                <input
+                                  type="number"
+                                  min="1"
+                                  max="200"
+                                  value={seatCapacity.diningCapacity}
+                                  onChange={(e) => setSeatCapacity({...seatCapacity, diningCapacity: parseInt(e.target.value) || 1})}
+                                  className="w-24 px-3 py-2 border-2 border-copper/20 rounded-lg focus:ring-2 focus:ring-copper/20 focus:border-copper/20 transition-all duration-300 bg-white text-ink-black font-semibold text-center"
+                                />
+                                <span className="ml-2 text-sm text-charcoal/60">{t.capacityHelpText}</span>
+                              </div>
+                            </div>
+                            
+                            {/* Save Button for Simple Mode */}
+                            <div className="flex justify-end pt-4 border-t border-copper/10 mt-4">
+                              <button
+                                onClick={saveSeatCapacitySettings}
+                                disabled={savingCapacity || !capacityLoaded}
+                                className={`group relative px-8 py-3 rounded-xl transition-all duration-300 font-semibold shadow-lg transform ${
+                                  (capacityLoaded && !savingCapacity)
+                                    ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white hover:from-purple-700 hover:to-indigo-700 hover:shadow-xl hover:-translate-y-0.5' 
+                                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                }`}
+                              >
+                                <span>{savingCapacity ? t.loading : 'Save Seat Capacity'}</span>
+                                {(capacityLoaded && !savingCapacity) && (
+                                  <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                                )}
+                              </button>
+                            </div>
+                          </>
+                        ) : (
+                          <TimeIntervalCapacity 
+                            isChineseMode={language === 'zh'} 
+                            onSettingsSaved={() => {
+                              fetchSeatCapacitySettings()
+                              toast({
+                                title: "Success",
+                                description: "Time interval capacity settings saved successfully"
+                              })
+                            }}
+                          />
+                        )}
                       </div>
                     )}
                   </div>
