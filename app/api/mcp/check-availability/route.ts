@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { getSeatCapacitySettings, getCapacityForTime, isDateClosed, isReservationTypeAvailable, isShiftClosed } from '@/lib/server-utils';
+import { getSeatCapacitySettings, getCapacityForTime, getPartyLimitForTime, isDateClosed, isReservationTypeAvailable, isShiftClosed } from '@/lib/server-utils';
 
 const supabaseAdmin = createClient(
   process.env.SUPABASE_URL!,
@@ -139,10 +139,20 @@ export async function POST(request: NextRequest) {
       }, { status: 500 });
     }
 
-    // Calculate total reserved seats for the specific time interval
+    // Calculate total reserved seats and parties for the specific time slot
     let totalReservedSeats = 0;
+    let totalReservedParties = 0;
     
-    if (capacitySettings.type === 'time_interval' && time) {
+    if (capacitySettings.type === 'slot_based' && time) {
+      // For slot-based capacity (OpenTable style), count reservations at exact time
+      totalReservedSeats = existingReservations
+        .filter(r => r.reservation_time === time)
+        .reduce((sum, reservation) => sum + (reservation.party_size || 0), 0);
+      
+      totalReservedParties = existingReservations
+        .filter(r => r.reservation_time === time)
+        .length;
+    } else if (capacitySettings.type === 'time_interval' && time) {
       // For time interval capacity, only count reservations in the same interval
       const intervals = capacitySettings.data[type]?.intervals || [];
       const [requestHours, requestMinutes] = time.split(':').map(Number);
@@ -209,23 +219,49 @@ export async function POST(request: NextRequest) {
     }
 
     const availableSeats = tableCapacity - totalReservedSeats;
-    const isAvailable = availableSeats >= partySize;
-
-    console.log(`Availability check: ${totalReservedSeats}/${tableCapacity} seats taken, ${availableSeats} available`);
+    
+    // Check party limit for slot-based capacity
+    let isAvailable = availableSeats >= partySize;
+    let failureReason = '';
+    
+    if (capacitySettings.type === 'slot_based' && time) {
+      const partyLimit = getPartyLimitForTime(capacitySettings, type as 'omakase' | 'dining', time);
+      const availablePartySlots = partyLimit - totalReservedParties;
+      
+      if (availablePartySlots <= 0) {
+        isAvailable = false;
+        failureReason = `No party slots available at ${time} (${partyLimit} party limit reached)`;
+      } else if (!isAvailable) {
+        failureReason = `Not enough seats available (${availableSeats} available, ${partySize} requested)`;
+      }
+      
+      console.log(`Slot-based availability check for ${time}: ${totalReservedSeats}/${tableCapacity} seats, ${totalReservedParties}/${partyLimit} parties`);
+    } else {
+      if (!isAvailable) {
+        failureReason = `Not enough seats available (${availableSeats} available, ${partySize} requested)`;
+      }
+      console.log(`Availability check: ${totalReservedSeats}/${tableCapacity} seats taken, ${availableSeats} available`);
+    }
 
     return NextResponse.json({
       success: true,
       available: isAvailable,
       details: {
         requestedDate: date,
+        requestedTime: time,
         reservationType: type,
         partySize,
         totalCapacity: tableCapacity,
         reservedSeats: totalReservedSeats,
         availableSeats,
+        ...(capacitySettings.type === 'slot_based' && time ? {
+          partyLimit: getPartyLimitForTime(capacitySettings, type as 'omakase' | 'dining', time),
+          reservedParties: totalReservedParties,
+          availablePartySlots: getPartyLimitForTime(capacitySettings, type as 'omakase' | 'dining', time) - totalReservedParties
+        } : {}),
         capacitySource: capacitySettings.source
       },
-      reason: isAvailable ? 'Table available' : `Not enough seats available (${availableSeats} available, ${partySize} requested)`
+      reason: isAvailable ? 'Table available' : failureReason
     });
 
   } catch (error) {

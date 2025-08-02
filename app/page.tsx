@@ -11,6 +11,7 @@ import { useRouter } from 'next/navigation'
 import LoginForm from '../components/LoginForm'
 import CommunicationHistoryModal from '../components/CommunicationHistoryModal'
 import TimeIntervalCapacity from '../components/TimeIntervalCapacity'
+import SlotBasedCapacity from '../components/SlotBasedCapacity'
 
 interface Reservation {
   id: string
@@ -149,7 +150,7 @@ export default function AdminDashboard() {
     diningCapacity: 40   // Default dining capacity
   })
   const [capacityLoaded, setCapacityLoaded] = useState(false)
-  const [capacityMode, setCapacityMode] = useState<'simple' | 'timeInterval'>('simple') // Toggle between simple and time interval modes
+  const [capacityMode, setCapacityMode] = useState<'simple' | 'timeInterval' | 'slotBased'>('simple') // Toggle between simple, time interval, and slot-based modes
   
   // Closed dates settings
   const [closedDates, setClosedDates] = useState<string[]>([])
@@ -658,9 +659,11 @@ export default function AdminDashboard() {
       capacityHelpText: "Seats (1-200)",
       loadingCapacitySettings: "Loading seat capacity settings...",
       simpleMode: "Simple Mode",
-      timeIntervalMode: "Time Interval Mode",
+      timeIntervalMode: "Time Range Mode",
+      slotBasedMode: "Time Slot Mode",
       simpleModeDescription: "Set a fixed capacity for all time slots",
-      timeIntervalModeDescription: "Set different capacities for different time intervals (like OpenTable/Resy)",
+      timeIntervalModeDescription: "Set different capacities for different time ranges",
+      slotBasedModeDescription: "Set specific covers and parties for each time slot (OpenTable/Resy style)",
       
       // Availability Settings
       availabilitySettings: "Reservation Type Availability",
@@ -898,9 +901,11 @@ export default function AdminDashboard() {
       capacityHelpText: "座位数 (1-200)",
       loadingCapacitySettings: "正在加载座位容量设置...",
       simpleMode: "简单模式",
-      timeIntervalMode: "时间段模式",
+      timeIntervalMode: "时间范围模式",
+      slotBasedMode: "时间段模式",
       simpleModeDescription: "为所有时间段设置固定容量",
-      timeIntervalModeDescription: "为不同时间段设置不同容量（类似OpenTable/Resy）",
+      timeIntervalModeDescription: "为不同时间范围设置不同容量",
+      slotBasedModeDescription: "为每个时间段设置具体的座位数和接待组数（OpenTable/Resy风格）",
       
       // Availability Settings
       availabilitySettings: "预订类型可用性",
@@ -1102,8 +1107,25 @@ export default function AdminDashboard() {
       const data = await response.json()
       
       if (data.success && data.settings) {
-        // Check if it's time interval format
-        if (data.settings.type === 'time_interval') {
+        // Check format type
+        if (data.settings.type === 'slot_based') {
+          setCapacityMode('slotBased')
+          // For simple view, calculate average capacity from enabled slots
+          const enabledOmakaseSlots = data.settings.omakase?.filter((s: any) => s.enabled) || []
+          const enabledDiningSlots = data.settings.dining?.filter((s: any) => s.enabled) || []
+          
+          const omakaseAvg = enabledOmakaseSlots.length > 0
+            ? enabledOmakaseSlots.reduce((sum: number, slot: any) => sum + slot.covers, 0) / enabledOmakaseSlots.length
+            : 12
+          const diningAvg = enabledDiningSlots.length > 0
+            ? enabledDiningSlots.reduce((sum: number, slot: any) => sum + slot.covers, 0) / enabledDiningSlots.length
+            : 24
+            
+          setSeatCapacity({
+            omakaseCapacity: Math.round(omakaseAvg),
+            diningCapacity: Math.round(diningAvg)
+          })
+        } else if (data.settings.type === 'time_interval') {
           setCapacityMode('timeInterval')
           // For simple view, calculate average capacity from intervals
           const omakaseAvg = data.settings.omakase?.intervals?.reduce((sum: number, interval: any) => 
@@ -4053,7 +4075,7 @@ export default function AdminDashboard() {
                         <div className="flex gap-2 p-1 bg-white/50 rounded-xl">
                           <button
                             onClick={() => setCapacityMode('simple')}
-                            className={`flex-1 px-4 py-2 rounded-lg font-medium transition-all ${
+                            className={`flex-1 px-3 py-2 rounded-lg font-medium transition-all text-sm ${
                               capacityMode === 'simple'
                                 ? 'bg-gradient-to-r from-orange-600 to-red-600 text-white shadow-lg'
                                 : 'text-charcoal/70 hover:bg-white/50'
@@ -4062,8 +4084,18 @@ export default function AdminDashboard() {
                             {t.simpleMode}
                           </button>
                           <button
+                            onClick={() => setCapacityMode('slotBased')}
+                            className={`flex-1 px-3 py-2 rounded-lg font-medium transition-all text-sm ${
+                              capacityMode === 'slotBased'
+                                ? 'bg-gradient-to-r from-orange-600 to-red-600 text-white shadow-lg'
+                                : 'text-charcoal/70 hover:bg-white/50'
+                            }`}
+                          >
+                            {t.slotBasedMode}
+                          </button>
+                          <button
                             onClick={() => setCapacityMode('timeInterval')}
-                            className={`flex-1 px-4 py-2 rounded-lg font-medium transition-all ${
+                            className={`flex-1 px-3 py-2 rounded-lg font-medium transition-all text-sm ${
                               capacityMode === 'timeInterval'
                                 ? 'bg-gradient-to-r from-orange-600 to-red-600 text-white shadow-lg'
                                 : 'text-charcoal/70 hover:bg-white/50'
@@ -4074,7 +4106,9 @@ export default function AdminDashboard() {
                         </div>
 
                         <p className="text-xs text-charcoal/60">
-                          {capacityMode === 'simple' ? t.simpleModeDescription : t.timeIntervalModeDescription}
+                          {capacityMode === 'simple' ? t.simpleModeDescription : 
+                           capacityMode === 'slotBased' ? t.slotBasedModeDescription :
+                           t.timeIntervalModeDescription}
                         </p>
 
                         {/* Conditional Content Based on Mode */}
@@ -4130,6 +4164,17 @@ export default function AdminDashboard() {
                               </button>
                             </div>
                           </>
+                        ) : capacityMode === 'slotBased' ? (
+                          <SlotBasedCapacity 
+                            isChineseMode={language === 'zh'} 
+                            onSettingsSaved={() => {
+                              fetchSeatCapacitySettings()
+                              toast({
+                                title: "Success",
+                                description: "Slot-based capacity settings saved successfully"
+                              })
+                            }}
+                          />
                         ) : (
                           <TimeIntervalCapacity 
                             isChineseMode={language === 'zh'} 
