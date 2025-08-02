@@ -104,7 +104,7 @@ export function processTemplate(templateContent: string, data: EmailData): strin
   // Add default restaurant information if not provided
   const processedData = {
     restaurant_email: process.env.RESTAURANT_EMAIL || 'team@toohot.kitchen',
-    restaurant_phone: process.env.RESTAURANT_PHONE || '(617) 555-0123',
+    restaurant_phone: process.env.RESTAURANT_PHONE || '(617) 945-1206',
     ...data
   }
 
