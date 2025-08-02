@@ -151,7 +151,6 @@ export default function AdminDashboard() {
   })
   const [capacityLoaded, setCapacityLoaded] = useState(false)
   const [capacityMode, setCapacityMode] = useState<'simple' | 'advanced'>('simple') // Which mode is active
-  const [showAdvancedCapacity, setShowAdvancedCapacity] = useState(false) // Show/hide advanced section
   
   // Closed dates settings
   const [closedDates, setClosedDates] = useState<string[]>([])
@@ -1109,7 +1108,6 @@ export default function AdminDashboard() {
         // Check if v2 settings has a mode preference
         if (v2Data.settings.mode) {
           setCapacityMode(v2Data.settings.mode)
-          setShowAdvancedCapacity(v2Data.settings.mode === 'advanced')
         }
       }
       
@@ -1571,17 +1569,11 @@ export default function AdminDashboard() {
       const data = await response.json()
 
       if (data.success) {
-        // Also save mode preference to v2
-        const v2Response = await fetch('/api/save-seat-capacity-settings-v2', {
+        // Also save mode preference without clearing slot data
+        const v2Response = await fetch('/api/update-capacity-mode', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            type: 'slot_based',
-            mode: capacityMode,
-            slotDuration: 30,
-            omakase: [],
-            dining: []
-          })
+          body: JSON.stringify({ mode: capacityMode })
         })
         
         const v2Data = await v2Response.json()
@@ -4090,8 +4082,6 @@ export default function AdminDashboard() {
                 
                 {expandedSections.seatCapacity && (
                   <div className="px-4 pb-4">
-                    <p className="text-sm text-charcoal/70 mb-4">{t.seatCapacityDescription}</p>
-                    
                     {!capacityLoaded ? (
                       <div className="flex items-center justify-center p-8">
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-copper"></div>
@@ -4099,117 +4089,145 @@ export default function AdminDashboard() {
                       </div>
                     ) : (
                       <div className="space-y-6">
-                        {/* Simple Capacity Settings - Always visible */}
-                        <div className="space-y-4">
-                          <div className="flex items-center justify-between p-4 bg-white/50 rounded-xl border border-copper/10">
-                            <div className="flex-1 mr-4">
-                              <h4 className="font-semibold text-ink-black mb-2">{t.omakaseCapacityLabel}</h4>
-                              <p className="text-sm text-charcoal/60 mb-3">{t.omakaseDesc}</p>
-                              <input
-                                type="number"
-                                min="1"
-                                max="200"
-                                value={seatCapacity.omakaseCapacity}
-                                onChange={(e) => setSeatCapacity({...seatCapacity, omakaseCapacity: parseInt(e.target.value) || 1})}
-                                className="w-24 px-3 py-2 border-2 border-copper/20 rounded-lg focus:ring-2 focus:ring-copper/20 focus:border-copper/20 transition-all duration-300 bg-white text-ink-black font-semibold text-center"
-                              />
-                              <span className="ml-2 text-sm text-charcoal/60">{t.capacityHelpText}</span>
-                            </div>
-                          </div>
-                          
-                          <div className="flex items-center justify-between p-4 bg-white/50 rounded-xl border border-copper/10">
-                            <div className="flex-1 mr-4">
-                              <h4 className="font-semibold text-ink-black mb-2">{t.diningCapacityLabel}</h4>
-                              <p className="text-sm text-charcoal/60 mb-3">{t.diningDesc}</p>
-                              <input
-                                type="number"
-                                min="1"
-                                max="200"
-                                value={seatCapacity.diningCapacity}
-                                onChange={(e) => setSeatCapacity({...seatCapacity, diningCapacity: parseInt(e.target.value) || 1})}
-                                className="w-24 px-3 py-2 border-2 border-copper/20 rounded-lg focus:ring-2 focus:ring-copper/20 focus:border-copper/20 transition-all duration-300 bg-white text-ink-black font-semibold text-center"
-                              />
-                              <span className="ml-2 text-sm text-charcoal/60">{t.capacityHelpText}</span>
-                            </div>
-                          </div>
-                          
-                          {/* Save Button for Simple Mode */}
-                          <div className="flex justify-end pt-4 border-t border-copper/10">
+                        {/* Mode Selection - FIRST THING */}
+                        <div className="bg-amber-50 p-4 rounded-xl border border-amber-200">
+                          <h4 className="text-sm font-semibold text-ink-black mb-3">
+                            {language === 'zh' ? '选择容量设置模式' : 'Choose Capacity Setting Mode'}
+                          </h4>
+                          <div className="grid grid-cols-2 gap-3">
                             <button
-                              onClick={saveSeatCapacitySettings}
-                              disabled={savingCapacity || !capacityLoaded}
-                              className={`group relative px-8 py-3 rounded-xl transition-all duration-300 font-semibold shadow-lg transform ${
-                                (capacityLoaded && !savingCapacity)
-                                  ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white hover:from-purple-700 hover:to-indigo-700 hover:shadow-xl hover:-translate-y-0.5' 
-                                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                              onClick={() => {
+                                setCapacityMode('simple')
+                              }}
+                              className={`p-4 rounded-xl border-2 transition-all ${
+                                capacityMode === 'simple'
+                                  ? 'border-orange-600 bg-orange-50 shadow-lg'
+                                  : 'border-copper/20 bg-white hover:bg-white/70'
                               }`}
                             >
-                              <span>{savingCapacity ? t.loading : 'Save Seat Capacity'}</span>
-                              {(capacityLoaded && !savingCapacity) && (
-                                <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                              )}
+                              <div className="text-center">
+                                <span className="text-2xl mb-2 block">🔢</span>
+                                <h5 className={`font-semibold mb-1 ${
+                                  capacityMode === 'simple' ? 'text-orange-600' : 'text-ink-black'
+                                }`}>
+                                  {language === 'zh' ? '简单模式' : 'Simple Mode'}
+                                </h5>
+                                <p className="text-xs text-charcoal/60">
+                                  {language === 'zh' ? '所有时间段使用相同容量' : 'Same capacity for all time slots'}
+                                </p>
+                              </div>
+                            </button>
+                            
+                            <button
+                              onClick={() => {
+                                setCapacityMode('advanced')
+                              }}
+                              className={`p-4 rounded-xl border-2 transition-all ${
+                                capacityMode === 'advanced'
+                                  ? 'border-orange-600 bg-orange-50 shadow-lg'
+                                  : 'border-copper/20 bg-white hover:bg-white/70'
+                              }`}
+                            >
+                              <div className="text-center">
+                                <span className="text-2xl mb-2 block">⏰</span>
+                                <h5 className={`font-semibold mb-1 ${
+                                  capacityMode === 'advanced' ? 'text-orange-600' : 'text-ink-black'
+                                }`}>
+                                  {language === 'zh' ? '高级模式' : 'Advanced Mode'}
+                                </h5>
+                                <p className="text-xs text-charcoal/60">
+                                  {language === 'zh' ? '每个时间段单独设置' : 'Set capacity per time slot'}
+                                </p>
+                              </div>
                             </button>
                           </div>
                         </div>
-                        
-                        {/* Mode Selection */}
-                        <div className="pt-6 border-t border-copper/10">
-                          <div className="flex items-center gap-4 mb-4">
-                            <span className="text-sm font-medium text-charcoal">
-                              {language === 'zh' ? '容量设置模式：' : 'Capacity Mode:'}
-                            </span>
-                            <div className="flex gap-2">
-                              <button
-                                onClick={() => {
-                                  setCapacityMode('simple')
-                                  setShowAdvancedCapacity(false)
-                                }}
-                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                                  capacityMode === 'simple'
-                                    ? 'bg-orange-600 text-white shadow-lg'
-                                    : 'bg-white/50 text-charcoal/70 hover:bg-white/70 border border-copper/20'
-                                }`}
-                              >
-                                {language === 'zh' ? '简单模式' : 'Simple Mode'}
-                              </button>
-                              <button
-                                onClick={() => {
-                                  setCapacityMode('advanced')
-                                  setShowAdvancedCapacity(true)
-                                }}
-                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                                  capacityMode === 'advanced'
-                                    ? 'bg-orange-600 text-white shadow-lg'
-                                    : 'bg-white/50 text-charcoal/70 hover:bg-white/70 border border-copper/20'
-                                }`}
-                              >
-                                {language === 'zh' ? '高级模式' : 'Advanced Mode'}
-                              </button>
+
+                        {/* Settings Content Based on Mode */}
+                        {capacityMode === 'simple' ? (
+                          /* Simple Mode Settings */
+                          <div className="space-y-4">
+                            <div className="bg-white/70 p-4 rounded-xl border border-copper/10">
+                              <h4 className="text-lg font-semibold text-ink-black mb-3">
+                                {language === 'zh' ? '简单容量设置' : 'Simple Capacity Settings'}
+                              </h4>
+                              <p className="text-sm text-charcoal/70 mb-4">{t.seatCapacityDescription}</p>
+                              
+                              <div className="space-y-4">
+                                <div className="flex items-center justify-between p-4 bg-white/50 rounded-xl border border-copper/10">
+                                  <div className="flex-1 mr-4">
+                                    <h5 className="font-semibold text-ink-black mb-2">{t.omakaseCapacityLabel}</h5>
+                                    <p className="text-sm text-charcoal/60 mb-3">{t.omakaseDesc}</p>
+                                    <input
+                                      type="number"
+                                      min="1"
+                                      max="200"
+                                      value={seatCapacity.omakaseCapacity}
+                                      onChange={(e) => setSeatCapacity({...seatCapacity, omakaseCapacity: parseInt(e.target.value) || 1})}
+                                      className="w-24 px-3 py-2 border-2 border-copper/20 rounded-lg focus:ring-2 focus:ring-copper/20 focus:border-copper/20 transition-all duration-300 bg-white text-ink-black font-semibold text-center"
+                                    />
+                                    <span className="ml-2 text-sm text-charcoal/60">{t.capacityHelpText}</span>
+                                  </div>
+                                </div>
+                                
+                                <div className="flex items-center justify-between p-4 bg-white/50 rounded-xl border border-copper/10">
+                                  <div className="flex-1 mr-4">
+                                    <h5 className="font-semibold text-ink-black mb-2">{t.diningCapacityLabel}</h5>
+                                    <p className="text-sm text-charcoal/60 mb-3">{t.diningDesc}</p>
+                                    <input
+                                      type="number"
+                                      min="1"
+                                      max="200"
+                                      value={seatCapacity.diningCapacity}
+                                      onChange={(e) => setSeatCapacity({...seatCapacity, diningCapacity: parseInt(e.target.value) || 1})}
+                                      className="w-24 px-3 py-2 border-2 border-copper/20 rounded-lg focus:ring-2 focus:ring-copper/20 focus:border-copper/20 transition-all duration-300 bg-white text-ink-black font-semibold text-center"
+                                    />
+                                    <span className="ml-2 text-sm text-charcoal/60">{t.capacityHelpText}</span>
+                                  </div>
+                                </div>
+                              </div>
+                              
+                              {/* Save Button for Simple Mode */}
+                              <div className="flex justify-end mt-6">
+                                <button
+                                  onClick={saveSeatCapacitySettings}
+                                  disabled={savingCapacity || !capacityLoaded}
+                                  className={`group relative px-8 py-3 rounded-xl transition-all duration-300 font-semibold shadow-lg transform ${
+                                    (capacityLoaded && !savingCapacity)
+                                      ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white hover:from-purple-700 hover:to-indigo-700 hover:shadow-xl hover:-translate-y-0.5' 
+                                      : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                  }`}
+                                >
+                                  <span>{savingCapacity ? t.loading : 'Save Simple Settings'}</span>
+                                  {(capacityLoaded && !savingCapacity) && (
+                                    <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                                  )}
+                                </button>
+                              </div>
                             </div>
                           </div>
-                          <p className="text-xs text-charcoal/60 mb-4">
-                            {capacityMode === 'simple' 
-                              ? (language === 'zh' ? '固定容量适用于所有时间段' : 'Fixed capacity applies to all time slots')
-                              : (language === 'zh' ? '为每个时间段单独设置容量（类似OpenTable/Resy）' : 'Set different capacities for each time slot (like OpenTable/Resy)')
-                            }
-                          </p>
-                          
-                          {/* Advanced Time Slot Settings */}
-                          {showAdvancedCapacity && (
-                            <div className="mt-4">
-                              <SlotBasedCapacity 
-                                isChineseMode={language === 'zh'} 
-                                onSettingsSaved={() => {
-                                  // Note: We don't reload settings since v2 is separate
-                                  toast({
-                                    title: "Success",
-                                    description: "Slot-based capacity settings saved successfully"
-                                  })
-                                }}
-                              />
-                            </div>
-                          )}
-                        </div>
+                        ) : (
+                          /* Advanced Mode Settings */
+                          <div className="bg-white/70 p-4 rounded-xl border border-copper/10">
+                            <h4 className="text-lg font-semibold text-ink-black mb-3">
+                              {language === 'zh' ? '高级时间段容量设置' : 'Advanced Time Slot Capacity Settings'}
+                            </h4>
+                            <p className="text-sm text-charcoal/70 mb-4">
+                              {language === 'zh' 
+                                ? '为每个时间段单独设置容量（类似OpenTable/Resy）' 
+                                : 'Set different capacities for each time slot (like OpenTable/Resy)'}
+                            </p>
+                            <SlotBasedCapacity 
+                              isChineseMode={language === 'zh'} 
+                              onSettingsSaved={() => {
+                                toast({
+                                  title: "Success",
+                                  description: "Advanced capacity settings saved successfully"
+                                })
+                              }}
+                            />
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
