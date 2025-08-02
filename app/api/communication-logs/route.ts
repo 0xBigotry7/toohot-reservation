@@ -25,11 +25,17 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch communication logs from database
+    // Only show emails sent to customers (outbound) and exclude pending status
+    // Exclude restaurant confirmation emails
     const { data: logs, error } = await supabaseAdmin
       .from('communication_logs')
       .select('*')
       .eq('reservation_id', reservationId)
       .eq('reservation_type', reservationType)
+      .eq('channel', 'email')
+      .eq('direction', 'outbound')
+      .neq('status', 'pending')
+      .not('template_used', 'like', '%restaurant%')
       .order('created_at', { ascending: false })
 
     if (error) {

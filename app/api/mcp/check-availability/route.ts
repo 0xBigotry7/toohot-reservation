@@ -143,7 +143,7 @@ export async function POST(request: NextRequest) {
     let totalReservedSeats = 0;
     
     if (capacitySettings.type === 'slot_based' && time) {
-      // For slot-based capacity (OpenTable style), count reservations at exact time
+      // For slot-based capacity, count reservations at exact time
       totalReservedSeats = existingReservations
         .filter(r => r.reservation_time === time)
         .reduce((sum, reservation) => sum + (reservation.party_size || 0), 0);

@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
       duration_minutes: 90,
       cancellation_reason: 'Schedule conflict',
       restaurant_email: process.env.RESTAURANT_EMAIL || 'team@toohot.kitchen',
-      restaurant_phone: process.env.RESTAURANT_PHONE || '(617) 555-0123',
+      restaurant_phone: process.env.RESTAURANT_PHONE || '(617) 945-1206',
       notes: 'VIP customer'
     }
     
