@@ -106,30 +106,54 @@ export default function SlotBasedCapacity({ isChineseMode, onSettingsSaved }: Pr
   }, [])
 
   useEffect(() => {
-    // When slot duration or active tab changes, regenerate slots with existing data
-    const updatedSettings = { ...settings, slotDuration }
-    
-    // Update slots for the current type
-    const updateSlotsForCurrentType = () => {
-      const existingSlots = settings[activeTab]
-      const slotMap = new Map(existingSlots.map(s => [s.time, s]))
-      
-      const newSlots = generateTimeSlots.map(time => {
-        const existing = slotMap.get(time)
-        return existing || {
+    // Only regenerate slots when slotDuration changes, not when activeTab changes
+    if (settings[activeTab].length === 0) {
+      // Only initialize if no slots exist for this tab
+      const initializeSlots = () => {
+        return generateTimeSlots.map(time => ({
           time,
           covers: activeTab === 'omakase' ? 12 : 20,
           enabled: activeTab === 'omakase' ? (time === '17:00' || time === '19:00') : false
-        }
-      })
-      
-      return {
-        ...updatedSettings,
-        [activeTab]: newSlots
+        }))
       }
+      
+      setSettings(prev => ({
+        ...prev,
+        slotDuration,
+        [activeTab]: initializeSlots()
+      }))
+    } else if (slotDuration !== settings.slotDuration) {
+      // When slot duration changes, we need to regenerate all slots
+      const regenerateSlotsForType = (type: 'omakase' | 'dining') => {
+        const existingSlots = settings[type]
+        const slotMap = new Map(existingSlots.map(s => [s.time, s]))
+        
+        return generateTimeSlots.map(time => {
+          const existing = slotMap.get(time)
+          if (existing) {
+            return existing
+          }
+          // For new slots, use the average covers from existing enabled slots or defaults
+          const enabledSlots = existingSlots.filter(s => s.enabled)
+          const avgCovers = enabledSlots.length > 0
+            ? Math.round(enabledSlots.reduce((sum, s) => sum + s.covers, 0) / enabledSlots.length)
+            : (type === 'omakase' ? 12 : 20)
+          
+          return {
+            time,
+            covers: avgCovers,
+            enabled: false
+          }
+        })
+      }
+      
+      setSettings(prev => ({
+        ...prev,
+        slotDuration,
+        omakase: regenerateSlotsForType('omakase'),
+        dining: regenerateSlotsForType('dining')
+      }))
     }
-    
-    setSettings(updateSlotsForCurrentType())
   }, [slotDuration, generateTimeSlots, activeTab]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchSettings = async () => {
@@ -141,24 +165,8 @@ export default function SlotBasedCapacity({ isChineseMode, onSettingsSaved }: Pr
         setSettings(data.settings)
         setSlotDuration(data.settings.slotDuration || 30)
         
-        // If empty, initialize with default slots
-        if (data.settings.omakase.length === 0 && data.settings.dining.length === 0) {
-          // Initialize with default slots
-          const initializeSlots = (type: 'omakase' | 'dining') => {
-            return generateTimeSlots.map(time => ({
-              time,
-              covers: type === 'omakase' ? 12 : 20,
-              enabled: type === 'omakase' ? (time === '17:00' || time === '19:00') : false
-            }))
-          }
-          
-          setSettings({
-            type: 'slot_based',
-            slotDuration: 30,
-            omakase: initializeSlots('omakase'),
-            dining: initializeSlots('dining')
-          })
-        }
+        // Don't initialize here - let the useEffect handle empty arrays
+        // This prevents overwriting database values
       }
     } catch (error) {
       console.error('Failed to fetch settings:', error)
